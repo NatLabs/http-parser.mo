@@ -10,7 +10,7 @@ module {
         method: Text;
         url: {
             original: Text;
-            protocal: Text ;
+            protocol: Text ;
             port: Nat16; 
             host: {
                 original: Text;
@@ -34,18 +34,18 @@ module {
             hashMap: HashMap.HashMap<Text, [Text]>;
             keys: [Text];
         };
-        body: ?{ 
-            original: Blob;
-            size: Nat; 
-            form: { 
-                get: (Text) -> ?[Text];
-                hashMap: HashMap.HashMap<Text, [Text]>;
-                keys: [Text]; 
-                files: (Text) -> ?[Buffer.Buffer<Nat8>];
-            };
-            text: () -> Text; 
-            file: () -> ?Buffer.Buffer<Nat8>; 
-            bytes: (start: Nat8, end: Nat8) -> Buffer.Buffer<Nat8>;
-        };
+        // body: ?{ 
+        //     original: Blob;
+        //     size: Nat; 
+        //     form: { 
+        //         get: (Text) -> ?[Text];
+        //         hashMap: HashMap.HashMap<Text, [Text]>;
+        //         keys: [Text]; 
+        //         files: (Text) -> ?[Buffer.Buffer<Nat8>];
+        //     };
+        //     text: () -> Text; 
+        //     file: () -> ?Buffer.Buffer<Nat8>; 
+        //     bytes: (start: Nat8, end: Nat8) -> Buffer.Buffer<Nat8>;
+        // };
     };      
 }

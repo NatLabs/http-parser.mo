@@ -21,4 +21,4 @@
     };
 ```
 
-Check out the [ParsedHttpRequest](./src/types.mo#L9) type for more information on supported fields and methods
+Check out the [ParsedHttpRequest](./src/types.mo#L9) type for supported fields and methods

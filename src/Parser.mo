@@ -162,10 +162,12 @@ module HttpRequestParser {
     //     public let size = blob.size();
     // };
 
-    public class Parser(req: HttpTypes.Request) {
-        public let method = req.method;
-        public let url: URL = URL(req.url);
-        public let headers: Headers = Headers(req.headers);
-        // public let body: ?Body = if ( method != "GET") {?Body(req.body, headers.get("Content-Type") ) } else {null};
-    };
+    public func parse (req: HttpRequest): Type.ParsedHttpRequest =
+        object {
+            public let method = req.method;
+            public let url: URL = URL(req.url);
+            public let headers: Headers = Headers(req.headers);
+            // public let body: ?Body = if ( method != "GET") {?Body(req.body, headers.get("Content-Type") ) } else {null};
+        }
+
 }
