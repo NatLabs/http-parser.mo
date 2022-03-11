@@ -2,6 +2,7 @@ import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Char "mo:base/Char";
 import Buffer "mo:base/Buffer";
+
 import Debug "mo:base/Debug";
 import HashMap "mo:base/HashMap";
 import HttpTypes "mo:http/Http";
@@ -9,10 +10,8 @@ import Iter "mo:base/Iter";
 import Nat16 "mo:base/Nat16";
 import Nat32 "mo:base/Nat32";
 import Option "mo:base/Option";
-
 import Query "mo:http/Query";
 import Text "mo:base/Text";
-
 import Type "types";
 
 module HttpRequestParser {

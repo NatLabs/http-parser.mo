@@ -2,7 +2,7 @@ import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Char "mo:base/Char";
 import Buffer "mo:base/Buffer";
-import Debug "mo:base/Debug";
+
 import HashMap "mo:base/HashMap";
 import HttpTypes "mo:http/Http";
 import Iter "mo:base/Iter";
