@@ -3,15 +3,15 @@
 ## Usage
 
 ```motoko
-    public query func http_request(rawReq: HttpRequest) : async HttpResponse {
-        let req = HttpRequestParser.parse(rawReq);
+    public query func http_request(rawReq: HttpParser.HttpRequest) : async HttpParser.HttpResponse {
+        let req = HttpParser.parse(rawReq);
 
-        let name = switch(req.queryObj.get("name")){
-            case (?name) " " # name;
+        let name = switch(req.url.queryObj.get("name")){
+            case (?name) name;
             case (_) "";
         };
 
-        let result = "<html><head><title> http_request </title></head><body><h1>👋 Hello" # name # ", Welcome to Dfinity! </h1></body></html>";
+        let result = "<html><head><title> http_request </title></head><body><h1> Hello, " # name # "! </h1></body></html>";
 
         {
             status_code = 200;
