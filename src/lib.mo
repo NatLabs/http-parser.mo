@@ -8,30 +8,24 @@ import Iter "mo:base/Iter";
 import Nat16 "mo:base/Nat16";
 import Nat32 "mo:base/Nat32";
 import Option "mo:base/Option";
+import Text "mo:base/Text";
 
 import HttpTypes "mo:http/Http";
 import Query "mo:http/Query";
-import Text "mo:base/Text";
+import JSON "mo:json/JSON";
 
 import T "types";
+import Utils "utils";
+import FormData "form-data";
+import MVHashMap "MVHashMap";
 
 module HttpRequestParser {
-
+    
     public type HeaderField = HttpTypes.HeaderField;
     public type HttpRequest = HttpTypes.Request;
     public type HttpResponse = HttpTypes.Response;
 
-    func textToNat( txt : Text) : Nat {
-        assert(txt.size() > 0);
-        let chars = txt.chars();
-        var num : Nat = 0;
-        for (v in chars){
-            let charToNum = Nat32.toNat(Char.toNat32(v)-48);
-            assert(charToNum >= 0 and charToNum <= 9);
-            num := num * 10 +  charToNum;          
-        };
-        num;
-    };
+    type File = T.File;
 
     func defaultPort(protocol: Text): Nat16{
         if (protocol == "http"){80} else{443}
@@ -133,7 +127,7 @@ module HttpRequestParser {
         let (_host, _port): (Text, Nat16) = switch (authority.size()){
             case (0) ("", defaultPort(protocol));
             case (1) (authority[0], defaultPort(protocol));
-            case (_) (authority[0], Nat16.fromNat(textToNat(authority[1])));
+            case (_) (authority[0], Nat16.fromNat(Utils.textToNat(authority[1])));
         };
 
         public let host: Host = Host(_host);
@@ -148,44 +142,109 @@ module HttpRequestParser {
 
     public class Headers(headers: [HeaderField]) {
         public let original = headers;
-        let hashMapWithBuffer = HashMap.HashMap<Text, Buffer.Buffer<Text>>(headers.size(), Text.equal, Text.hash);
+        let mvMap = MVHashMap.MVHashMap<Text, Text>(headers.size(), Text.equal, Text.hash);
 
-        for ((key, value) in headers.vals()) {
-            let prevBuffer = hashMapWithBuffer.get(key);
-            
-            switch(prevBuffer){
-                case(?prevBuffer) prevBuffer.add(value);
-                case(_){
-                    let buffer = Buffer.Buffer<Text>(1);
-                    buffer.add(value);
-                    hashMapWithBuffer.put(key, buffer);
-                };
-            };
+        for ((_key, value) in headers.vals()) {
+            let key  = Utils.toLowercase(_key);
+
+            // split and trim comma seperated values 
+            let valuesIter = Iter.map<Text, Text>(
+                Text.split(value, #char ','), 
+                func (text){
+                    Text.trim(text, #char ' ')
+                });
+                
+            let values = Iter.toArray(valuesIter);
+            mvMap.addMany(key, values);
         };
 
-        public let hashMap = HashMap.HashMap<Text, [Text]>(hashMapWithBuffer.size(), Text.equal, Text.hash);
+        public let hashMap: HashMap.HashMap<Text, [Text]> = mvMap.freezeValues();
 
-        for ((key, values) in hashMapWithBuffer.entries()){
-            hashMap.put(key, values.toArray());
-        };
-
-        public func get(key: Text): ?[Text]{
+        public func get(_key: Text): ?[Text]{
+            let key =  Utils.toLowercase(_key);
             return hashMap.get(key);
         };
 
         public let keys = Iter.toArray(hashMap.keys());
     };
 
-    // public class Body (blob: Blob, contentType: ?[Text]){ 
-    //     public let original = blob;
-    //     public let size = blob.size();
-    // };
+
+    public class Body (blob: Blob, contentType: ?[Text]){ 
+        let blobArray = Blob.toArray(blob);
+
+        public let original = blob;
+        public let size = blob.size();
+
+        public func text(): Text {
+            Option.get(Text.decodeUtf8(blob), "")
+        };
+
+        public func bytes(start: Nat, end: Nat):  Buffer.Buffer<Nat8>{
+            let bytesArray = Utils.sliceArray<Nat8>(blobArray, start, end);
+            Utils.arrayToBuffer(bytesArray)
+        };
+
+        public func deserialize(): ?JSON.JSON{
+            JSON.Parser().parse(text())
+        };
+
+        let parsedForm = FormData.parse(blob);
+        
+        public func file(): ?Buffer.Buffer<Nat8>{
+            switch (parsedForm){
+                case (?notNull){
+                    return null;
+                };
+                case (_){
+                    return ?Utils.arrayToBuffer(blobArray)
+                };
+            };
+        };
+
+        let emptyFormHashMap = HashMap.HashMap<Text, [File]>(0, Text.equal, Text.hash);
+        let formData = Option.get<HashMap.HashMap<Text, [File]>>(parsedForm, emptyFormHashMap);
+
+        public let form = object {
+            public let keys = Iter.toArray(formData.keys());
+
+            public func files(name: Text):?[Buffer.Buffer<Nat8>]{
+                 switch (formData.get(name)){
+                    case (?filesData){
+                        let arrOfBytes = Array.map<File, Buffer.Buffer<Nat8>>(filesData, func (file){
+                            Utils.arrayToBuffer<Nat8>(file.bytes);
+                        });
+
+                        return ?arrOfBytes
+                    };
+                    case (_) null;
+                };
+            };
+
+            public let hashMap = HashMap.HashMap<Text, [Text]>(formData.size(), Text.equal, Text.hash);
+
+            for ((key, filesData) in formData.entries()){
+                let decodedFiles = Array.map<File, Text>(filesData, func (file){
+                    Option.get( Text.decodeUtf8(Blob.fromArray(file.bytes)), "")
+                });
+                hashMap.put(key, decodedFiles);
+            };
+
+            public func get(key: Text): ?[Text]{
+                hashMap.get(key)
+            };
+        };
+
+        
+    };
 
     public func parse (req: HttpRequest): T.ParsedHttpRequest = object {
             public let method = req.method;
             public let url: URL = URL(req.url);
             public let headers: Headers = Headers(req.headers);
-            // public let body: ?Body = if ( method != "GET") {?Body(req.body, headers.get("Content-Type") ) } else {null};
+            public let body: ?Body = if ( method != "GET") {
+                ?Body(req.body, headers.get("Content-Type") ) 
+                } else {
+                    null
+                };
         };
-
 }

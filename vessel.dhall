@@ -1,4 +1,4 @@
 {
-  dependencies = [ "base", "http" ],
+  dependencies = [ "base", "http", "json", "array" ],
   compiler = None Text
 }
