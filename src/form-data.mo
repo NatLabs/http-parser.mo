@@ -16,7 +16,7 @@ import JSON "mo:json/JSON";
 
 import T "types";
 import Utils "utils";
-import MVHashMap "MVHashMap";
+import MultiValueMap "MultiValueMap";
 
 module {
 
@@ -43,7 +43,7 @@ module {
     // Todo: add the boundary sent from the content-type as a parameter
     public func parse(blob: Blob): ?HashMap.HashMap<Text, [File]> {
         let blobArray = Blob.toArray(blob);
-        let files = MVHashMap.MVHashMap<Text, File>(0, Text.equal, Text.hash);
+        let files = MultiValueMap.MultiValueMap<Text, File>(0, Text.equal, Text.hash);
         let chars = plainTextIter(blobArray);
 
         var boundary = "";

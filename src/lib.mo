@@ -9,6 +9,7 @@ import Nat16 "mo:base/Nat16";
 import Nat32 "mo:base/Nat32";
 import Option "mo:base/Option";
 import Text "mo:base/Text";
+import Result "mo:base/Result";
 
 import HttpTypes "mo:http/Http";
 import Query "mo:http/Query";
@@ -17,7 +18,7 @@ import JSON "mo:json/JSON";
 import T "types";
 import Utils "utils";
 import FormData "form-data";
-import MVHashMap "MVHashMap";
+import MultiValueMap "MultiValueMap";
 
 module HttpRequestParser {
     
@@ -26,44 +27,42 @@ module HttpRequestParser {
     public type HttpResponse = HttpTypes.Response;
 
     type File = T.File;
+    type FormDataType = T.FormDataType;
 
     func defaultPort(protocol: Text): Nat16{
         if (protocol == "http"){80} else{443}
     };
 
-    class Host (hostname: Text){
-        public let original = hostname;
-        public let array = Iter.toArray(Text.tokens(hostname, #char('.')));
-    };
-
-    class EncodedKeyValuePairs(encodedStr: Text){
+    public class URLEncodedPairs(encodedStr: Text){
         let encodedPairs  =  Iter.toArray(Text.tokens(encodedStr, #text("&")));
 
-        public let hashMap = HashMap.HashMap<Text, Text>(encodedPairs.size(), Text.equal, Text.hash);
+        let mvMap = MultiValueMap.MultiValueMap<Text, Text>(encodedPairs.size(), Text.equal, Text.hash);
         
         for (encodedPair in encodedPairs.vals()) {
             let pair : [Text] = Iter.toArray(Text.split(encodedPair, #char '='));
             if (pair.size()==2){
-                hashMap.put(pair[0], pair[1]);
+                mvMap.add(pair[0], pair[1]);
             };
         };
 
-        public func get(key: Text): ?Text{
-            return hashMap.get(key);
-        };
+        public let keys = Iter.toArray(mvMap.keys());
 
-        public let keys = Iter.toArray(hashMap.keys());
+        public let multiValueMap = mvMap.freezeValues();
+
+        public func getValues(key: Text): ?[Text]{
+            return multiValueMap.get(key);
+        };
     };
 
     public class SearchParams(queryString: Text) {
         public let original = Text.trimStart(queryString, #char('?'));
         
-        let params: EncodedKeyValuePairs = EncodedKeyValuePairs(original);
+        let pairs: URLEncodedPairs = URLEncodedPairs(original);
+        let singleValueMap = pairs.multiValueMap.toSingleValueMap();
 
-        public let hashMap = params.hashMap;
-
-        public let get = params.get;
-        public let keys = params.keys;
+        public let hashMap = singleValueMap;
+        public let get = singleValueMap.get;
+        public let keys = pairs.keys;
     };
 
     public class URL (url: Text){
@@ -130,8 +129,12 @@ module HttpRequestParser {
             case (_) (authority[0], Nat16.fromNat(Utils.textToNat(authority[1])));
         };
 
-        public let host: Host = Host(_host);
         public let port = _port;
+
+        public let host = object {
+            public let original = _host;
+            public let array = Iter.toArray(Text.tokens(_host, #char('.')));
+        };
 
         public let path = object {
             public let original = Text.join("/", path_iter);
@@ -142,7 +145,7 @@ module HttpRequestParser {
 
     public class Headers(headers: [HeaderField]) {
         public let original = headers;
-        let mvMap = MVHashMap.MVHashMap<Text, Text>(headers.size(), Text.equal, Text.hash);
+        let mvMap = MultiValueMap.MultiValueMap<Text, Text>(headers.size(), Text.equal, Text.hash);
 
         for ((_key, value) in headers.vals()) {
             let key  = Utils.toLowercase(_key);
@@ -168,8 +171,77 @@ module HttpRequestParser {
         public let keys = Iter.toArray(hashMap.keys());
     };
 
+    public func parseForm(blob: Blob, formType: FormDataType): Result.Result<T.FormObjType, ()> {
+        switch(formType){
+            case (#multipart(boundary)){
 
-    public class Body (blob: Blob, contentType: ?[Text]){ 
+                let parsedForm = FormData.parse(blob);
+
+                return switch(parsedForm){
+                    case (?formData){
+                        let result = object {
+                            public let keys = Iter.toArray(formData.keys());
+
+                            public func files(name: Text):?[Buffer.Buffer<Nat8>]{
+                                 switch (formData.get(name)){
+                                    case (?filesData){
+                                        let arrOfBytes = Array.map<File, Buffer.Buffer<Nat8>>(filesData, func (file){
+                                            Utils.arrayToBuffer<Nat8>(file.bytes);
+                                        });
+                                        return ?arrOfBytes
+                                    };
+                                    case (_) null;
+                                };
+                            };
+
+                            public let hashMap = HashMap.HashMap<Text, [Text]>(formData.size(), Text.equal, Text.hash);
+                            for ((key, filesData) in formData.entries()){
+                                let decodedFiles = Array.map<File, Text>(filesData, func (file){
+                                    Option.get( Text.decodeUtf8(Blob.fromArray(file.bytes)), "")
+                                });
+                                hashMap.put(key, decodedFiles);
+                            };
+
+                            public func get(key: Text): ?[Text]{
+                                hashMap.get(key)
+                            };
+                        };
+
+                        #ok(result)
+                    };
+                    case(_){
+                        #err
+                    };
+                }
+            };
+
+            case (#urlencoded){
+                let blobText = Text.decodeUtf8(blob);
+                switch( blobText ){
+                    case (?text){
+                        let result = object {
+                            let pairs = URLEncodedPairs(text);
+                            
+                            public let keys = pairs.keys;
+                            public let hashMap = pairs.multiValueMap;
+                            public let get = pairs.getValues;
+
+                            public func files(key: Text):?[Buffer.Buffer<Nat8>]{
+                                return null;
+                            };
+                        };
+
+                        #ok(result);
+                    };
+                    case (_){
+                        #err
+                    };
+                };
+            };
+        }
+    };
+
+    public class Body (blob: Blob, contentType: ?Text){ 
         let blobArray = Blob.toArray(blob);
 
         public let original = blob;
@@ -188,61 +260,93 @@ module HttpRequestParser {
             JSON.Parser().parse(text())
         };
 
-        let parsedForm = FormData.parse(blob);
+        let formType: ?FormDataType = switch(contentType){
+            case(?conType){
+                if (Text.startsWith(conType, #text("multipart/form-data"))) {
+                    // Todo: parse content type for boundary
+                    ?#multipart(?"")
+                }else {
+                    if (Text.startsWith(conType, #text("application/x-www-form-urlencoded"))){
+                        ?#urlencoded
+                    }else{
+                        null
+                    }
+                };
+            };
+            case(_){
+               null
+            };
+        };
+
+        let defaultForm = object {
+            public let keys:[Text] = [];
+            public let hashMap = HashMap.HashMap<Text, [Text]>(0, Text.equal, Text.hash);
+            public let get = hashMap.get;
+            public func files(t: Text):?[Buffer.Buffer<Nat8>]{
+                return null;
+            };
+        };
+
+        var isForm = false;
+
+        public let form:T.FormObjType = switch(formType){
+            case(?formType){
+                switch(parseForm(blob, formType)){
+                    case(#ok(formObj)) {
+                        isForm:=true;
+                        formObj
+                    };
+                    case(#err) {
+                        defaultForm
+                    };
+                }; 
+            };
+            case(_){
+                defaultForm
+            };
+        };
         
         public func file(): ?Buffer.Buffer<Nat8>{
-            switch (parsedForm){
-                case (?notNull){
+            switch (isForm){
+                case (true){
                     return null;
                 };
-                case (_){
+                case (false){
                     return ?Utils.arrayToBuffer(blobArray)
                 };
             };
         };
 
-        let emptyFormHashMap = HashMap.HashMap<Text, [File]>(0, Text.equal, Text.hash);
-        let formData = Option.get<HashMap.HashMap<Text, [File]>>(parsedForm, emptyFormHashMap);
-
-        public let form = object {
-            public let keys = Iter.toArray(formData.keys());
-
-            public func files(name: Text):?[Buffer.Buffer<Nat8>]{
-                 switch (formData.get(name)){
-                    case (?filesData){
-                        let arrOfBytes = Array.map<File, Buffer.Buffer<Nat8>>(filesData, func (file){
-                            Utils.arrayToBuffer<Nat8>(file.bytes);
-                        });
-
-                        return ?arrOfBytes
-                    };
-                    case (_) null;
-                };
-            };
-
-            public let hashMap = HashMap.HashMap<Text, [Text]>(formData.size(), Text.equal, Text.hash);
-
-            for ((key, filesData) in formData.entries()){
-                let decodedFiles = Array.map<File, Text>(filesData, func (file){
-                    Option.get( Text.decodeUtf8(Blob.fromArray(file.bytes)), "")
-                });
-                hashMap.put(key, decodedFiles);
-            };
-
-            public func get(key: Text): ?[Text]{
-                hashMap.get(key)
-            };
-        };
-
-        
     };
 
     public func parse (req: HttpRequest): T.ParsedHttpRequest = object {
             public let method = req.method;
             public let url: URL = URL(req.url);
             public let headers: Headers = Headers(req.headers);
-            public let body: ?Body = if ( method != "GET") {
-                ?Body(req.body, headers.get("Content-Type") ) 
+            public let body: ?Body = if ( method == HttpTypes.Method.Get) {
+
+                let contentTypeValues = headers.get("Content-Type");
+
+                let contentType = switch(contentTypeValues){
+                    case (?values){
+                        Array.find<Text>(values, func (_val){
+                            let val = Utils.toLowercase(_val);
+
+                            if (Text.startsWith(val, #text("multipart/form-data")) or 
+                                Text.startsWith(val, #text("application/x-www-form-urlencoded")))  {
+                                return true;
+                            };
+
+                            return false;
+                        })
+                    };
+                    case (_){
+                        null;
+                    };
+                };
+                
+                ?Body(req.body, contentType)
+
                 } else {
                     null
                 };

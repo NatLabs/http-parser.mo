@@ -12,7 +12,7 @@ import Option "mo:base/Option";
 import Text "mo:base/Text";
 
 import ArrayModule "mo:array/Array";
-
+import Hex "mo:encoding/Hex";
 import Query "mo:http/Query";
 import JSON "mo:json/JSON";
 
@@ -41,7 +41,7 @@ module {
         return c;
     };
 
-    public func toLowercase(text: Text):Text{
+    public func toLowercase(text: Text): Text{
         var lowercase = "";
 
         for (c in text.chars()){
@@ -80,4 +80,13 @@ module {
             };
         };
     };
+
+    public func encodeURIComponent(url: Text): Text{
+        ""
+    };
+
+    public func decodeURIComponent(url: Text): Text{
+        ""
+    };
+
 }
