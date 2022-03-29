@@ -11,6 +11,16 @@ let additions = [
   , repo = "https://github.com/tomijaga/http-parser.mo"
   , version = "main"
   , dependencies = [ "base", "http" ]
-  }
+  },
+  { name = "parsec"
+  , repo = "https://github.com/crusso/mo-parsec"
+  , version = "v1.0.0"
+  , dependencies = [ "base" ]
+  },
+  { name = "format"
+  , repo = "https://github.com/tomijaga/format.mo"
+  , version = "main"
+  , dependencies = [ "base" ]
+  },
 ] : List Package
 in  upstream # additions

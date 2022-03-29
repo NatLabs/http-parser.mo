@@ -47,6 +47,7 @@ module HttpRequestParser {
 
         public let keys = Iter.toArray(mvMap.keys());
 
+        public let toSingleValueMap = mvMap.toSingleValueMap;
         public let multiValueMap = mvMap.freezeValues();
 
         public func getValues(key: Text): ?[Text]{
@@ -58,10 +59,9 @@ module HttpRequestParser {
         public let original = Text.trimStart(queryString, #char('?'));
         
         let pairs: URLEncodedPairs = URLEncodedPairs(original);
-        let singleValueMap = pairs.multiValueMap.toSingleValueMap();
 
-        public let hashMap = singleValueMap;
-        public let get = singleValueMap.get;
+        public let hashMap = pairs.toSingleValueMap();
+        public let get = hashMap.get;
         public let keys = pairs.keys;
     };
 
@@ -175,10 +175,10 @@ module HttpRequestParser {
         switch(formType){
             case (#multipart(boundary)){
 
-                let parsedForm = FormData.parse(blob);
+                let parsedForm = FormData.parse(blob, boundary);
 
-                return switch(parsedForm){
-                    case (?formData){
+                switch(parsedForm){
+                    case (#ok(formData)){
                         let result = object {
                             public let keys = Iter.toArray(formData.keys());
 
@@ -209,9 +209,20 @@ module HttpRequestParser {
 
                         #ok(result)
                     };
-                    case(_){
+                    case(#err(errorType)) {
+                        let errorMsg = switch(errorType){
+                            case(#MissingExitBoundary)  "MissingExitBoundary";
+                            case(#BoundaryNotDetected) "BoundaryNotDetected";
+                            case(#IncorrectBoundary) "IncorrectBoundary";
+                            case(#MissingContentName) "MissingContentName";
+                        };
+
+                        Debug.print(errorMsg);
+
                         #err
                     };
+                        
+                 
                 }
             };
 
@@ -241,7 +252,18 @@ module HttpRequestParser {
         }
     };
 
+    func isFormData(_contentType: Text): Bool {
+        let contentType = Utils.toLowercase(_contentType);
+        Text.startsWith(contentType, #text("multipart/form-data"))
+    };
+
+    func isURLEncoded(_contentType: Text): Bool {
+        let contentType = Utils.toLowercase(_contentType);
+        Text.startsWith(contentType, #text("application/x-www-form-urlencoded"))
+    };
+
     public class Body (blob: Blob, contentType: ?Text){ 
+        Debug.print("in body");
         let blobArray = Blob.toArray(blob);
 
         public let original = blob;
@@ -262,11 +284,20 @@ module HttpRequestParser {
 
         let formType: ?FormDataType = switch(contentType){
             case(?conType){
-                if (Text.startsWith(conType, #text("multipart/form-data"))) {
-                    // Todo: parse content type for boundary
-                    ?#multipart(?"")
+                if (isFormData(conType)) {
+                    Debug.print("isFormData");
+                    let splitText = Iter.toArray(Text.tokens(conType, #text("boundary=")));
+                    let boundary = if (splitText.size() == 2){
+                        ?Text.trim(splitText[1], #text("\""))
+                    }else {
+                        null
+                    };
+                    
+                    ?#multipart(boundary)
                 }else {
-                    if (Text.startsWith(conType, #text("application/x-www-form-urlencoded"))){
+                    if (isURLEncoded(conType)){
+                        Debug.print("isURLEncoded");
+
                         ?#urlencoded
                     }else{
                         null
@@ -288,7 +319,7 @@ module HttpRequestParser {
         };
 
         var isForm = false;
-
+        
         public let form:T.FormObjType = switch(formType){
             case(?formType){
                 switch(parseForm(blob, formType)){
@@ -296,7 +327,7 @@ module HttpRequestParser {
                         isForm:=true;
                         formObj
                     };
-                    case(#err) {
+                    case(_) {
                         defaultForm
                     };
                 }; 
@@ -323,20 +354,15 @@ module HttpRequestParser {
             public let method = req.method;
             public let url: URL = URL(req.url);
             public let headers: Headers = Headers(req.headers);
-            public let body: ?Body = if ( method == HttpTypes.Method.Get) {
-
+            public let body: ?Body = if ( method != HttpTypes.Method.Get) {
                 let contentTypeValues = headers.get("Content-Type");
 
                 let contentType = switch(contentTypeValues){
                     case (?values){
-                        Array.find<Text>(values, func (_val){
-                            let val = Utils.toLowercase(_val);
-
-                            if (Text.startsWith(val, #text("multipart/form-data")) or 
-                                Text.startsWith(val, #text("application/x-www-form-urlencoded")))  {
+                        Array.find<Text>(values, func (val){
+                            if (isFormData(val) or isURLEncoded(val))  {
                                 return true;
                             };
-
                             return false;
                         })
                     };
@@ -347,8 +373,8 @@ module HttpRequestParser {
                 
                 ?Body(req.body, contentType)
 
-                } else {
-                    null
-                };
-        };
+            } else {
+                null
+            };
+    };
 }

@@ -64,6 +64,12 @@ module {
         return buffer;
     };
 
+    public func n8ToChar(n8: Nat8): Char{
+        let n = Nat8.toNat(n8);
+        let n32 = Nat32.fromNat(n);
+        let char = Char.fromNat32(n32);
+    };
+
     public func enumerate<A>(iter: Iter.Iter<A> ): Iter.Iter<(Nat, A)> {
         var i =0;
         return object{
@@ -79,6 +85,17 @@ module {
                 };
             };
         };
+    };
+
+    public func trimSpaces(text: Text): Text{
+        func pattern(c: Char): Bool{
+            Text.contains("\n\r\t ", #char c);
+        };
+        return Text.trim(text, #predicate(pattern));
+    };
+
+    public func trimQuotes(text: Text): Text{
+        return Text.trim(text, #text("\""));
     };
 
     public func encodeURIComponent(url: Text): Text{

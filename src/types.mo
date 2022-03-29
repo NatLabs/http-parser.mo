@@ -63,6 +63,10 @@ module {
     public type File = {
         name: Text;
         filename: Text;
+        
+        mimeType: Text;
+        mimeSubType: Text;
+
         start: Nat;
         end: Nat;
         bytes: [Nat8];

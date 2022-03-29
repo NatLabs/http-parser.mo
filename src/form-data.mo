@@ -10,9 +10,11 @@ import Nat8 "mo:base/Nat8";
 import Nat32 "mo:base/Nat32";
 import Option "mo:base/Option";
 import Text "mo:base/Text";
+import Result "mo:base/Result";
 
 import Query "mo:http/Query";
 import JSON "mo:json/JSON";
+import F "mo:format";
 
 import T "types";
 import Utils "utils";
@@ -21,109 +23,183 @@ import MultiValueMap "MultiValueMap";
 module {
 
     type File = T.File;
+    type ParsingError = {
+        #MissingExitBoundary;
+        #BoundaryNotDetected;
+        #IncorrectBoundary;
+        #MissingContentName;
+    };
 
     func plainTextIter (blobArray: [Nat8]): Iter.Iter<Char> {
         var i =0;
         return object{
             public func next ():?Char {
-                if (i == blobArray.size() ) return null;
+                if (i == blobArray.size()) return null;
 
                 let nextVal = blobArray[i];
                 i+=1;
 
-                let n = Nat8.toNat(nextVal);
-                let n32 = Nat32.fromNat(n);
-                let char = Char.fromNat32(n32);
-
-                return ?char;
+                return ?Utils.n8ToChar(nextVal);
             };
         };
     };
 
-    // Todo: add the boundary sent from the content-type as a parameter
-    public func parse(blob: Blob): ?HashMap.HashMap<Text, [File]> {
+    func trimQuotesAndSpaces(text:Text):Text{
+        Utils.trimQuotes(Utils.trimSpaces((text)))
+    };
+
+    // Format
+    // Content-Disposition: form-data; name="myFile"; filename="test.txt"
+    func parseContentDisposition(line: Text): (Text, Text) {
+        let splitTextArr = Iter.toArray(Text.tokens(line, #char ';'));
+        let n = splitTextArr.size();
+        var name  = "";
+        if (n > 1){
+            let arr = Iter.toArray(Text.split(splitTextArr[1], #text("name=")));
+            if (arr.size()== 2){
+                name:= trimQuotesAndSpaces(arr[1]);
+            }; 
+        };
+
+        var filename = "";
+        if (n > 2){
+            let arr = Iter.toArray(Text.split(splitTextArr[2], #text("filename=")));
+            if (arr.size() == 2){
+                filename:= trimQuotesAndSpaces(arr[1]);
+            }; 
+        };
+        (name, filename)
+    };
+
+    // Format
+    // Content-Type: text/plain
+    func parseContentType(line: Text): (Text, Text){
+        let arr = Iter.toArray(Text.tokens(line, #char ':'));
+
+        return if (arr.size() > 1){
+            let mime = Iter.toArray(Text.tokens( arr[1], #char '/'));
+            let mimeType = mime[0];
+            let mimeSubType = if (mime.size() > 1 ){
+                mime[1];
+            } else {""};
+
+            (mimeType, mimeSubType)
+        }else{
+            ("", "")
+        }
+    };
+
+    public func parse(blob: Blob, _boundary:?Text): Result.Result<HashMap.HashMap<Text, [File]>, ParsingError> {
         let blobArray = Blob.toArray(blob);
         let files = MultiValueMap.MultiValueMap<Text, File>(0, Text.equal, Text.hash);
         let chars = plainTextIter(blobArray);
 
-        var boundary = "";
-        var closingBoundry = "";
+        let delim = "--";
+        var boundary = switch(_boundary){
+            case (?bound) delim # bound ;
+            case (_) "";
+        };
+        var exitBoundary = if (boundary != "") {boundary # delim} else {""};
 
-        var row="";
-        var text="";
+        var line="";
 
-        var rowIndexFromBoundary = 0;
+        var lineIndexFromBoundary = 0;
         var contentType = "";
         var name = "";
+        var filename = "";
+
+        var mimeType = "";
+        var mimeSubType = "";
+
         var start = 0;
         var end  = 0;
         var prevRowIndex = 0;
 
         label l for ((i, char) in Utils.enumerate<Char>(chars)){
-            row := row # Char.toText(char);
-            text := text # Char.toText(char);
-          
             
-              if (char == '\n') {
-
-                prevRowIndex := i;
-
-                if (rowIndexFromBoundary == 0){
-                    if (Text.startsWith(row, #text "--")){
-                        boundary:= row;
-                        closingBoundry:=boundary #"--";
-                        Debug.print("boundary: " # boundary);
+            line := Utils.trimSpaces(line # Char.toText(char));
+          
+            if (char == '\n') {
+                // Get's the boundary from the first line if it wasn't specified
+                if (lineIndexFromBoundary == 0){
+                    if (boundary == ""){
+                        if (Text.startsWith(line, #text "--")){
+                            boundary:= line;
+                            exitBoundary:=boundary # "--";
+                            Debug.print("boundary: " # boundary);
+                        }else{
+                            return #err(#BoundaryNotDetected);
+                        };
                     }else{
-                        Debug.print("Error boundary: " # boundary);
-                        return null;
+                        if (boundary != line){
+                            return #err(#IncorrectBoundary);
+                        };
+                    };
+                    
+                };
+
+                if (lineIndexFromBoundary == 1){
+                    if (Text.startsWith(line, #text "Content-Disposition:")){
+                        let (_name, _filename) = parseContentDisposition(line);
+                        name:= _name;
+                        filename := _filename;
+                    }else{
+                        return #err(#MissingContentName);
                     };
                 };
 
-                if (rowIndexFromBoundary == 1){
-                    if (Text.startsWith(row, #text "Content-Disposition:")){
-                        let iter = Text.split(row, #char ' ');
-                        Debug.print(Text.join("-j-",  iter));
+                if (lineIndexFromBoundary == 2){
+                    if (Text.startsWith(line, #text "Content-Type:")){
+                        let (_mimeType, _mimeSubType) = parseContentType(line);
+                        mimeType:= _mimeType;
+                        mimeSubType:=_mimeSubType;
                     };
                 };
 
-                if (rowIndexFromBoundary == 2){
-                    Debug.print("row 2: "#  row);
+                if (lineIndexFromBoundary == 3){
+                    start := i+1;
                 };
 
-                if (rowIndexFromBoundary == 3){
-                    start := i;
-                };
-
-                if (rowIndexFromBoundary == 4){
-                    Debug.print("row 4: "#  row);
-                };
-
-                if ((row  == boundary or row  == closingBoundry) and boundary != "" ){
-                    end:= prevRowIndex-1;
-                    Debug.print(name # ": ( "#  Nat.toText(start) # ", " #  Nat.toText(end) # " )");
+                if (lineIndexFromBoundary > 1  and (line  == boundary or line  == exitBoundary)){
+                    end:= prevRowIndex;
                     files.add(name, {
                         name = name;
-                        filename = name;
+                        filename = filename;
+
+                        mimeType = mimeType;
+                        mimeSubType = mimeSubType;
+
                         start = start;
                         end = end;
                         bytes = Utils.sliceArray(blobArray, start, end);
                     });
+
+                    Debug.print(F.format(
+                        "name: {}, filename: {} \nmimeType: {}, mimeSubType: {} \n start: {}, end:{}", 
+                        [#text name, #text filename, #text mimeType, #text mimeSubType, #num start, #num end]));
                     
-                    rowIndexFromBoundary := 0;
+                    lineIndexFromBoundary := 0;
+
+                    name := "";
+                    filename:="";
+
+                    mimeType := "";
+                    mimeSubType := "";
+
                     start := 0;
                     end := 0;
-                    name := "";
+
                 };
+
+                if (line  == exitBoundary) {break l};
                
 
-                row:= "";
-
-                rowIndexFromBoundary+=1;
+                line:= "";
+                prevRowIndex := i;
+                lineIndexFromBoundary+=1;
             };
         };
 
-        Debug.print("last row: " # row);
-
-        return ?files.freezeValues();
+        return #ok(files.freezeValues());
     };
 }
