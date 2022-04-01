@@ -12,8 +12,8 @@ import Blob "mo:base/Blob";
 import Parsec "mo:parsec/Parsec";
 import F "mo:format";
 
-// import HttpParser "mo:HttpParser";
-import HttpParser "../../src";
+import HttpParser "mo:HttpParser";
+// import HttpParser "../../src";
 import FormData "../../src/form-data";
 import Utils "../../src/utils"
 
