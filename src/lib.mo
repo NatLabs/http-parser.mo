@@ -26,6 +26,7 @@ module HttpRequestParser {
     public type HeaderField = HttpTypes.HeaderField;
     public type HttpRequest = HttpTypes.Request;
     public type HttpResponse = HttpTypes.Response;
+    public type ParsedHttpRequest = T.ParsedHttpRequest;
 
     type File = T.File;
     type FormDataType = T.FormDataType;

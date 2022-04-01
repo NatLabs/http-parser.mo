@@ -13,6 +13,8 @@ import Parsec "mo:parsec/Parsec";
 import F "mo:format";
 
 import HttpParser "mo:HttpParser";
+import HttpParserTypes "mo:HttpParser/types";
+
 // import HttpParser "../../src";
 import FormData "../../src/form-data";
 import Utils "../../src/utils"
@@ -21,10 +23,8 @@ actor {
     func greet(name: Text): Text{
         "Hello, " # name  # "! "
     };
-    
-    public query func http_request(rawReq: HttpParser.HttpRequest) : async HttpParser.HttpResponse {
 
-        let req = HttpParser.parse(rawReq);
+    func debugRequestParser(req: HttpParserTypes.ParsedHttpRequest ): (){
         Debug.print(F.format("Method ({})", [#text(req.method)]));
         Debug.print("\n");
 
@@ -88,6 +88,12 @@ actor {
                 Debug.print( "no body" );
             };
         };
+    };
+    
+    public query func http_request(rawReq: HttpParser.HttpRequest) : async HttpParser.HttpResponse {
+
+        let req = HttpParser.parse(rawReq);
+        debugRequestParser(req);
 
         let name = switch(req.url.queryObj.get("name")){
             case (?name) name;
