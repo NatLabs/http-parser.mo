@@ -16,3 +16,5 @@ dist/
 
 .history
 .vessel
+
+/dfx.json

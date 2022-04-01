@@ -1,30 +1,18 @@
-import Text "mo:base/Text";
 import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
-import Nat8 "mo:base/Nat8";
 import Nat16 "mo:base/Nat16";
-import Nat32 "mo:base/Nat32";
 import Option "mo:base/Option";
-import Iter "mo:base/Iter";
-import Char "mo:base/Char";
-import Blob "mo:base/Blob";
+import Text "mo:base/Text";
 
-import Parsec "mo:parsec/Parsec";
 import F "mo:format";
-
-import HttpParser "mo:HttpParser";
-import HttpParserTypes "mo:HttpParser/types";
-
-// import HttpParser "../../src";
-import FormData "../../src/form-data";
-import Utils "../../src/utils"
+// import HttpParser "mo:HttpParser";
+import HttpParser "../../src"; // --del
 
 actor {
     func greet(name: Text): Text{
         "Hello, " # name  # "! "
     };
 
-    func debugRequestParser(req: HttpParserTypes.ParsedHttpRequest ): (){
+    func debugRequestParser(req: HttpParser.ParsedHttpRequest ): (){
         Debug.print(F.format("Method ({})", [#text(req.method)]));
         Debug.print("\n");
 

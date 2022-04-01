@@ -1,8 +1,4 @@
 {
-  dependencies = [ "base", "HttpParser" , 
-
-  --dependencies for httpParser
-  "json", "array", "encoding", "parsec", "format"],
-  
+  dependencies = [ "base", "HttpParser", "format"],
   compiler = None Text
 }

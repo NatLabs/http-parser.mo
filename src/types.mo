@@ -1,13 +1,8 @@
 import HashMap "mo:base/HashMap";
 import Buffer "mo:base/Buffer";
-import Array "mo:base/Array";
-import Text "mo:base/Text";
-import Nat8 "mo:base/Nat8";
-import Blob "mo:base/Blob";
 import JSON "mo:json/JSON";
 
 module {
-
     public type File = {
         name: Text;
         filename: Text;

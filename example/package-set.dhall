@@ -2,28 +2,13 @@ let upstream = https://github.com/aviate-labs/package-set/releases/download/v0.1
 
 let Package = { name : Text, version : Text, repo : Text, dependencies : List Text }
 let additions = [
-   { name = "http"
-  , repo = "https://github.com/aviate-labs/http.mo"
-  , version = "v0.1.0"
-  , dependencies = [ "base" ]
-  },
   { name = "HttpParser"
   , repo = "https://github.com/tomijaga/http-parser.mo"
   , version = "main"
   , dependencies = [ "base", "http" ]
   },
-  { name = "parsec"
-  , repo = "https://github.com/crusso/mo-parsec"
-  , version = "v1.0.0"
-  , dependencies = [ "base" ]
-  },
   { name = "format"
   , repo = "https://github.com/tomijaga/format.mo"
-  , version = "main"
-  , dependencies = [ "base" ]
-  },
-  { name = "array"
-  , repo = "https://github.com/aviate-labs/array.mo"
   , version = "main"
   , dependencies = [ "base" ]
   },
