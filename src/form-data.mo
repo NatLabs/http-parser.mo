@@ -160,12 +160,12 @@ module {
 
                 if (lineIndexFromBoundary == 3 or lineIndexFromBoundary == 4){
                     if (line != "" and start == 0){
-                         start := prevRowIndex;
+                         start := prevRowIndex + 1;
                     };
                 };
 
                 if (lineIndexFromBoundary > 1  and (line  == boundary or line  == exitBoundary)){
-                    end:= prevRowIndex;
+                    end:= prevRowIndex - 1;
 
                     if (filename != ""){
                         filesMVMap.add(name, {
@@ -207,7 +207,7 @@ module {
                 if (line  == exitBoundary) {break l};
                
                 line:= "";
-                prevRowIndex := i+1;
+                prevRowIndex := i;
                 lineIndexFromBoundary+=1;
             };
         };
@@ -218,6 +218,7 @@ module {
             public let get = hashMap.get;
 
             let filesMap = filesMVMap.freezeValues();
+            public let fileKeys = Iter.toArray(filesMap.keys());
             public func files (name: Text): ?[File]{
                 filesMap.get(name)
             };

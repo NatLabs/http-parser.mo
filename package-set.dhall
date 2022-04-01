@@ -6,6 +6,16 @@ let additions = [
   , repo = "https://github.com/aviate-labs/http.mo"
   , version = "v0.1.0"
   , dependencies = [ "base" ]
-  }
+  },
+  { name = "format"
+  , repo = "https://github.com/tomijaga/format.mo"
+  , version = "main"
+  , dependencies = [ "base" ]
+  },
+  { name = "array"
+  , repo = "https://github.com/aviate-labs/array.mo"
+  , version = "main"
+  , dependencies = [ "base" ]
+  },
 ] : List Package
 in  upstream # additions

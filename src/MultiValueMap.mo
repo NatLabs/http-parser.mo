@@ -31,8 +31,6 @@ module {
             map.put(key, buffer);
         };
 
-        
-
         public func add(key:K, value:V){
             switch(map.get(key)){
                 case (?buffer){

@@ -210,6 +210,7 @@ module HttpRequestParser {
                             public let hashMap = pairs.multiValueMap;
                             public let get = pairs.getValues;
 
+                            public let fileKeys: [Text] =[];
                             public func files(key: Text):?[File]{
                                 return null;
                             };
@@ -282,6 +283,8 @@ module HttpRequestParser {
             public let keys:[Text] = [];
             public let hashMap = HashMap.HashMap<Text, [Text]>(0, Text.equal, Text.hash);
             public let get = hashMap.get;
+
+            public let fileKeys:[Text] =[];
             public func files(t: Text):?[File]{
                 return null;
             };

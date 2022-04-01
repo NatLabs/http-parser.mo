@@ -23,7 +23,9 @@ module {
     public type FormObjType = {
         get: (Text) -> ?[Text];
         hashMap: HashMap.HashMap<Text, [Text]>;
-        keys: [Text]; 
+        keys: [Text];
+        
+        fileKeys: [Text];
         files: (Text) -> ?[File];
     };
 
@@ -67,8 +69,6 @@ module {
     };      
 
     // internal types
-    
-
     public type FormDataType = {
         #urlencoded: ();
         
