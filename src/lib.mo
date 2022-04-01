@@ -1,18 +1,15 @@
 import Array "mo:base/Array";
 import Blob "mo:base/Blob";
-import Char "mo:base/Char";
 import Buffer "mo:base/Buffer";
 import Debug "mo:base/Debug";
 import HashMap "mo:base/HashMap";
 import Iter "mo:base/Iter";
 import Nat16 "mo:base/Nat16";
-import Nat32 "mo:base/Nat32";
 import Option "mo:base/Option";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
 
 import HttpTypes "mo:http/Http";
-import Query "mo:http/Query";
 import JSON "mo:json/JSON";
 import ArrayModule "mo:array/Array";
 
