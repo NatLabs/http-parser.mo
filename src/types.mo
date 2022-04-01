@@ -8,11 +8,23 @@ import JSON "mo:json/JSON";
 
 module {
 
+    public type File = {
+        name: Text;
+        filename: Text;
+        
+        mimeType: Text;
+        mimeSubType: Text;
+
+        start: Nat;
+        end: Nat;
+        bytes: Buffer.Buffer<Nat8>;
+    };
+
     public type FormObjType = {
         get: (Text) -> ?[Text];
         hashMap: HashMap.HashMap<Text, [Text]>;
         keys: [Text]; 
-        files: (Text) -> ?[Buffer.Buffer<Nat8>];
+        files: (Text) -> ?[File];
     };
 
     public type ParsedHttpRequest = {
@@ -46,12 +58,7 @@ module {
         body: ?{ 
             original: Blob;
             size: Nat; 
-            form: { 
-                get: (Text) -> ?[Text];
-                hashMap: HashMap.HashMap<Text, [Text]>;
-                keys: [Text]; 
-                files: (Text) -> ?[Buffer.Buffer<Nat8>];
-            };
+            form: FormObjType;
             text: () -> Text; 
             deserialize: () -> ?JSON.JSON;
             file: () -> ?Buffer.Buffer<Nat8>; 
@@ -60,17 +67,7 @@ module {
     };      
 
     // internal types
-    public type File = {
-        name: Text;
-        filename: Text;
-        
-        mimeType: Text;
-        mimeSubType: Text;
-
-        start: Nat;
-        end: Nat;
-        bytes: [Nat8];
-    };
+    
 
     public type FormDataType = {
         #urlencoded: ();

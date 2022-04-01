@@ -12,6 +12,7 @@ import Option "mo:base/Option";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
 
+import ArrayModule "mo:array/Array";
 import Query "mo:http/Query";
 import JSON "mo:json/JSON";
 import F "mo:format";
@@ -28,6 +29,7 @@ module {
         #BoundaryNotDetected;
         #IncorrectBoundary;
         #MissingContentName;
+        #UTF8DecodeError;
     };
 
     func plainTextIter (blobArray: [Nat8]): Iter.Iter<Char> {
@@ -86,13 +88,15 @@ module {
             (mimeType, mimeSubType)
         }else{
             ("", "")
-        }
+        };
     };
 
-    public func parse(blob: Blob, _boundary:?Text): Result.Result<HashMap.HashMap<Text, [File]>, ParsingError> {
+    public func parse(blob: Blob, _boundary:?Text): Result.Result<T.FormObjType, ParsingError> {
         let blobArray = Blob.toArray(blob);
-        let files = MultiValueMap.MultiValueMap<Text, File>(0, Text.equal, Text.hash);
         let chars = plainTextIter(blobArray);
+
+        let filesMVMap = MultiValueMap.MultiValueMap<Text, File>(0, Text.equal, Text.hash);
+        let fields = MultiValueMap.MultiValueMap<Text, Text>(0, Text.equal, Text.hash);
 
         let delim = "--";
         var boundary = switch(_boundary){
@@ -126,7 +130,6 @@ module {
                         if (Text.startsWith(line, #text "--")){
                             boundary:= line;
                             exitBoundary:=boundary # "--";
-                            Debug.print("boundary: " # boundary);
                         }else{
                             return #err(#BoundaryNotDetected);
                         };
@@ -135,7 +138,6 @@ module {
                             return #err(#IncorrectBoundary);
                         };
                     };
-                    
                 };
 
                 if (lineIndexFromBoundary == 1){
@@ -156,28 +158,39 @@ module {
                     };
                 };
 
-                if (lineIndexFromBoundary == 3){
-                    start := i+1;
+                if (lineIndexFromBoundary == 3 or lineIndexFromBoundary == 4){
+                    if (line != "" and start == 0){
+                         start := prevRowIndex;
+                    };
                 };
 
                 if (lineIndexFromBoundary > 1  and (line  == boundary or line  == exitBoundary)){
                     end:= prevRowIndex;
-                    files.add(name, {
-                        name = name;
-                        filename = filename;
 
-                        mimeType = mimeType;
-                        mimeSubType = mimeSubType;
+                    if (filename != ""){
+                        filesMVMap.add(name, {
+                            name = name;
+                            filename = filename;
 
-                        start = start;
-                        end = end;
-                        bytes = Utils.sliceArray(blobArray, start, end);
-                    });
+                            mimeType = mimeType;
+                            mimeSubType = mimeSubType;
 
-                    Debug.print(F.format(
-                        "name: {}, filename: {} \nmimeType: {}, mimeSubType: {} \n start: {}, end:{}", 
-                        [#text name, #text filename, #text mimeType, #text mimeSubType, #num start, #num end]));
-                    
+                            start = start;
+                            end = end;
+                            bytes = Utils.arraySliceToBuffer<Nat8>(blobArray, start, end);
+                        });
+                    }else{
+                        let bytes = ArrayModule.slice(blobArray, start, end);
+                        let value = Utils.bytesToText(bytes);
+
+                        switch(value){
+                            case(?val) {
+                                fields.add(name, val);
+                            };
+                            case(_) return #err(#UTF8DecodeError);
+                        };
+                    };
+
                     lineIndexFromBoundary := 0;
 
                     name := "";
@@ -193,13 +206,21 @@ module {
 
                 if (line  == exitBoundary) {break l};
                
-
                 line:= "";
-                prevRowIndex := i;
+                prevRowIndex := i+1;
                 lineIndexFromBoundary+=1;
             };
         };
+        
+        return #ok(object {
+            public let hashMap = fields.freezeValues();
+            public let keys = Iter.toArray(hashMap.keys());
+            public let get = hashMap.get;
 
-        return #ok(files.freezeValues());
+            let filesMap = filesMVMap.freezeValues();
+            public func files (name: Text): ?[File]{
+                filesMap.get(name)
+            };
+        });
     };
 }

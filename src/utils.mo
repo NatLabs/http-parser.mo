@@ -51,12 +51,17 @@ module {
         return lowercase;
     };
 
-    public func sliceArray<T>(arr: [T], start: Nat, end: Nat): [T]{
-        let len: Nat = if (end > start){end - start} else {0};
-        ArrayModule.take((ArrayModule.drop(arr, start)), len)
+    public func arrayToBuffer <T>(arr: [T]): Buffer.Buffer<T>{
+        let buffer = Buffer.Buffer<T>(arr.size());
+        for (n in arr.vals()){
+            buffer.add(n);
+        };
+        return buffer;
     };
 
-    public func arrayToBuffer <T>(arr: [T]): Buffer.Buffer<T>{
+    public func arraySliceToBuffer<T>(arr: [T], start: Nat, end: Nat): Buffer.Buffer<T>{
+        if (end >= arr.size() or end < start) return Buffer.Buffer<T>(0);
+
         let buffer = Buffer.Buffer<T>(arr.size());
         for (n in arr.vals()){
             buffer.add(n);
@@ -96,6 +101,10 @@ module {
 
     public func trimQuotes(text: Text): Text{
         return Text.trim(text, #text("\""));
+    };
+
+    public func bytesToText(bytes:[Nat8]): ?Text {
+        Text.decodeUtf8(Blob.fromArray(bytes))
     };
 
     public func encodeURIComponent(url: Text): Text{

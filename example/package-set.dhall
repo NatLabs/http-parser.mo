@@ -22,5 +22,10 @@ let additions = [
   , version = "main"
   , dependencies = [ "base" ]
   },
+  { name = "array"
+  , repo = "https://github.com/aviate-labs/array.mo"
+  , version = "main"
+  , dependencies = [ "base" ]
+  },
 ] : List Package
 in  upstream # additions

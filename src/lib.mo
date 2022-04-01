@@ -14,6 +14,7 @@ import Result "mo:base/Result";
 import HttpTypes "mo:http/Http";
 import Query "mo:http/Query";
 import JSON "mo:json/JSON";
+import ArrayModule "mo:array/Array";
 
 import T "types";
 import Utils "utils";
@@ -178,52 +179,24 @@ module HttpRequestParser {
                 let parsedForm = FormData.parse(blob, boundary);
 
                 switch(parsedForm){
-                    case (#ok(formData)){
-                        let result = object {
-                            public let keys = Iter.toArray(formData.keys());
-
-                            public func files(name: Text):?[Buffer.Buffer<Nat8>]{
-                                 switch (formData.get(name)){
-                                    case (?filesData){
-                                        let arrOfBytes = Array.map<File, Buffer.Buffer<Nat8>>(filesData, func (file){
-                                            Utils.arrayToBuffer<Nat8>(file.bytes);
-                                        });
-                                        return ?arrOfBytes
-                                    };
-                                    case (_) null;
-                                };
-                            };
-
-                            public let hashMap = HashMap.HashMap<Text, [Text]>(formData.size(), Text.equal, Text.hash);
-                            for ((key, filesData) in formData.entries()){
-                                let decodedFiles = Array.map<File, Text>(filesData, func (file){
-                                    Option.get( Text.decodeUtf8(Blob.fromArray(file.bytes)), "")
-                                });
-                                hashMap.put(key, decodedFiles);
-                            };
-
-                            public func get(key: Text): ?[Text]{
-                                hashMap.get(key)
-                            };
-                        };
-
-                        #ok(result)
+                    case (#ok(formObj)){
+                       return #ok(formObj)
                     };
+
                     case(#err(errorType)) {
                         let errorMsg = switch(errorType){
                             case(#MissingExitBoundary)  "MissingExitBoundary";
                             case(#BoundaryNotDetected) "BoundaryNotDetected";
                             case(#IncorrectBoundary) "IncorrectBoundary";
                             case(#MissingContentName) "MissingContentName";
+                            case(#UTF8DecodeError) "UTF8DecodeError";
                         };
 
-                        Debug.print(errorMsg);
+                        Debug.print("Error Message: " # errorMsg);
 
                         #err
                     };
-                        
-                 
-                }
+                };
             };
 
             case (#urlencoded){
@@ -237,7 +210,7 @@ module HttpRequestParser {
                             public let hashMap = pairs.multiValueMap;
                             public let get = pairs.getValues;
 
-                            public func files(key: Text):?[Buffer.Buffer<Nat8>]{
+                            public func files(key: Text):?[File]{
                                 return null;
                             };
                         };
@@ -263,7 +236,6 @@ module HttpRequestParser {
     };
 
     public class Body (blob: Blob, contentType: ?Text){ 
-        Debug.print("in body");
         let blobArray = Blob.toArray(blob);
 
         public let original = blob;
@@ -274,7 +246,7 @@ module HttpRequestParser {
         };
 
         public func bytes(start: Nat, end: Nat):  Buffer.Buffer<Nat8>{
-            let bytesArray = Utils.sliceArray<Nat8>(blobArray, start, end);
+            let bytesArray = ArrayModule.slice(blobArray, start, end);
             Utils.arrayToBuffer(bytesArray)
         };
 
@@ -285,7 +257,6 @@ module HttpRequestParser {
         let formType: ?FormDataType = switch(contentType){
             case(?conType){
                 if (isFormData(conType)) {
-                    Debug.print("isFormData");
                     let splitText = Iter.toArray(Text.tokens(conType, #text("boundary=")));
                     let boundary = if (splitText.size() == 2){
                         ?Text.trim(splitText[1], #text("\""))
@@ -296,8 +267,6 @@ module HttpRequestParser {
                     ?#multipart(boundary)
                 }else {
                     if (isURLEncoded(conType)){
-                        Debug.print("isURLEncoded");
-
                         ?#urlencoded
                     }else{
                         null
@@ -313,7 +282,7 @@ module HttpRequestParser {
             public let keys:[Text] = [];
             public let hashMap = HashMap.HashMap<Text, [Text]>(0, Text.equal, Text.hash);
             public let get = hashMap.get;
-            public func files(t: Text):?[Buffer.Buffer<Nat8>]{
+            public func files(t: Text):?[File]{
                 return null;
             };
         };
@@ -351,30 +320,28 @@ module HttpRequestParser {
     };
 
     public func parse (req: HttpRequest): T.ParsedHttpRequest = object {
-            public let method = req.method;
-            public let url: URL = URL(req.url);
-            public let headers: Headers = Headers(req.headers);
-            public let body: ?Body = if ( method != HttpTypes.Method.Get) {
-                let contentTypeValues = headers.get("Content-Type");
-
-                let contentType = switch(contentTypeValues){
-                    case (?values){
-                        Array.find<Text>(values, func (val){
-                            if (isFormData(val) or isURLEncoded(val))  {
-                                return true;
-                            };
-                            return false;
-                        })
-                    };
-                    case (_){
-                        null;
-                    };
+        public let method = req.method;
+        public let url: URL = URL(req.url);
+        public let headers: Headers = Headers(req.headers);
+        public let body: ?Body = if ( method != HttpTypes.Method.Get) {
+            let contentTypeValues = headers.get("Content-Type");
+            let contentType = switch(contentTypeValues){
+                case (?values){
+                    Array.find<Text>(values, func (val){
+                        if (isFormData(val) or isURLEncoded(val))  {
+                            return true;
+                        };
+                        return false;
+                    })
                 };
-                
-                ?Body(req.body, contentType)
-
-            } else {
-                null
+                case (_){
+                    null;
+                };
             };
+            
+            ?Body(req.body, contentType)
+        } else {
+            null
+        };
     };
 }
