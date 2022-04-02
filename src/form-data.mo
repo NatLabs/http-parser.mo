@@ -86,8 +86,8 @@ module {
         let blobArray = Blob.toArray(blob);
         let chars = plainTextIter(blobArray);
 
-        let filesMVMap = MultiValueMap.MultiValueMap<Text, File>(0, Text.equal, Text.hash);
-        let fields = MultiValueMap.MultiValueMap<Text, Text>(0, Text.equal, Text.hash);
+        let filesMVMap = MultiValueMap.MultiValueMap<Text, File>(Text.equal, Text.hash);
+        let fields = MultiValueMap.MultiValueMap<Text, Text>(Text.equal, Text.hash);
 
         let delim = "--";
         var boundary = switch(_boundary){
@@ -111,9 +111,17 @@ module {
         var prevRowIndex = 0;
 
         label l for ((i, char) in Utils.enumerate<Char>(chars)){
-            
-            line := Utils.trimSpaces(line # Char.toText(char));
-          
+
+            let isIndexBeforeContent =  lineIndexFromBoundary > 0 and lineIndexFromBoundary <= 4;
+            let isBoundary = Text.startsWith(boundary, #text(line));
+            let isExitBoundary = Text.startsWith(exitBoundary, #text(line));
+
+            let store = isIndexBeforeContent or isBoundary or isExitBoundary; 
+
+            if (store){
+                line := Utils.trimSpaces(line # Char.toText(char));
+            };
+
             if (char == '\n') {
                 // Get's the boundary from the first line if it wasn't specified
                 if (lineIndexFromBoundary == 0){
@@ -192,7 +200,6 @@ module {
 
                     start := 0;
                     end := 0;
-
                 };
 
                 if (line  == exitBoundary) {break l};
@@ -201,6 +208,7 @@ module {
                 prevRowIndex := i;
                 lineIndexFromBoundary+=1;
             };
+
         };
         
         return #ok(object {

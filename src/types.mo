@@ -1,4 +1,4 @@
-import HashMap "mo:base/HashMap";
+import TrieMap "mo:base/TrieMap";
 import Buffer "mo:base/Buffer";
 import JSON "mo:json/JSON";
 
@@ -17,7 +17,7 @@ module {
 
     public type FormObjType = {
         get: (Text) -> ?[Text];
-        hashMap: HashMap.HashMap<Text, [Text]>;
+        hashMap: TrieMap.TrieMap<Text, [Text]>;
         keys: [Text];
         
         fileKeys: [Text];
@@ -41,7 +41,7 @@ module {
             queryObj: {
                 original: Text;
                 get: (Text) -> ?Text;
-                hashMap: HashMap.HashMap<Text, Text>;
+                hashMap: TrieMap.TrieMap<Text, Text>;
                 keys: [Text]; 
             };
             anchor: Text; 
@@ -49,7 +49,7 @@ module {
         headers: {
             original: [(Text, Text)];
             get: (Text) -> ?[Text];
-            hashMap: HashMap.HashMap<Text, [Text]>;
+            hashMap: TrieMap.TrieMap<Text, [Text]>;
             keys: [Text];
         };
         body: ?{ 

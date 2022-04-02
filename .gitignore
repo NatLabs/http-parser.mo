@@ -18,3 +18,5 @@ dist/
 .vessel
 
 /dfx.json
+
+docs.md

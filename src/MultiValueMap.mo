@@ -1,20 +1,20 @@
 import Buffer "mo:base/Buffer";
 import Debug "mo:base/Debug";
-import HashMap "mo:base/HashMap";
+import TrieMap "mo:base/TrieMap";
 import Iter "mo:base/Iter";
 import Hash "mo:base/Hash";
 
 import Utils "utils";
 
 module {
-    // Multi-Value HashMap
+    /// A Map extention of a TrieMap that can store multiple values for one key 
+    /// Multiple values are stored in a Buffer and accessed/returned as an array
     public class MultiValueMap<K, V>(
-        initCapacity : Nat,
-        keyEq : (K, K) -> Bool,
-        keyHash : K -> Hash.Hash
+        isEq : (K, K) -> Bool,
+        hashOf : K -> Hash.Hash
     ){
 
-        let map = HashMap.HashMap<K, Buffer.Buffer<V>>(initCapacity, keyEq, keyHash);
+        let map = TrieMap.TrieMap<K, Buffer.Buffer<V>>(isEq, hashOf);
 
         public let size = map.size;
         public let keys = map.keys;
@@ -53,7 +53,6 @@ module {
                 };
             };
         };
-
 
         func optBufferToArray(optionalBuffer: ?Buffer.Buffer<V>):?[V]{
             switch(optionalBuffer){
@@ -97,14 +96,14 @@ module {
             };
         };
 
-        // returns a new hashmap with the values stored in immutable arrays instead of buffers
-        public func freezeValues(): HashMap.HashMap<K, [V]>{
-            HashMap.fromIter<K, [V]>(entries(), size(), keyEq, keyHash);
+        // returns a new TrieMap with the values stored in immutable arrays instead of buffers
+        public func freezeValues(): TrieMap.TrieMap<K, [V]>{
+            TrieMap.fromEntries<K, [V]>(entries(), isEq, hashOf);
         };
 
-        // returns a hashmap where only the first value of each entry is stored
-        public func toSingleValueMap(): HashMap.HashMap<K, V>{
-            let singleValueMap = HashMap.HashMap<K, V>(size(), keyEq, keyHash);
+        // returns a TrieMap where only the first value of each entry is stored
+        public func toSingleValueMap(): TrieMap.TrieMap<K, V>{
+            let singleValueMap = TrieMap.TrieMap<K, V>(isEq, hashOf);
 
             for ((key, values) in entries()){
                 singleValueMap.put(key, values[0]);

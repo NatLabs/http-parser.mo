@@ -2,7 +2,7 @@ import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Buffer "mo:base/Buffer";
 import Debug "mo:base/Debug";
-import HashMap "mo:base/HashMap";
+import TrieMap "mo:base/TrieMap";
 import Iter "mo:base/Iter";
 import Nat16 "mo:base/Nat16";
 import Option "mo:base/Option";
@@ -35,7 +35,7 @@ module HttpRequestParser {
     public class URLEncodedPairs(encodedStr: Text){
         let encodedPairs  =  Iter.toArray(Text.tokens(encodedStr, #text("&")));
 
-        let mvMap = MultiValueMap.MultiValueMap<Text, Text>(encodedPairs.size(), Text.equal, Text.hash);
+        let mvMap = MultiValueMap.MultiValueMap<Text, Text>(Text.equal, Text.hash);
         
         for (encodedPair in encodedPairs.vals()) {
             let pair : [Text] = Iter.toArray(Text.split(encodedPair, #char '='));
@@ -77,7 +77,6 @@ module HttpRequestParser {
                     case (_) ("https", href);
                 };
         };
-
 
         url_str:=str_wp;
 
@@ -144,11 +143,11 @@ module HttpRequestParser {
 
     public class Headers(headers: [HeaderField]) {
         public let original = headers;
-        let mvMap = MultiValueMap.MultiValueMap<Text, Text>(headers.size(), Text.equal, Text.hash);
+        let mvMap = MultiValueMap.MultiValueMap<Text, Text>(Text.equal, Text.hash);
 
         for ((_key, value) in headers.vals()) {
             let key  = Utils.toLowercase(_key);
-
+        
             // split and trim comma seperated values 
             let valuesIter = Iter.map<Text, Text>(
                 Text.split(value, #char ','), 
@@ -160,7 +159,7 @@ module HttpRequestParser {
             mvMap.addMany(key, values);
         };
 
-        public let hashMap: HashMap.HashMap<Text, [Text]> = mvMap.freezeValues();
+        public let hashMap: TrieMap.TrieMap<Text, [Text]> = mvMap.freezeValues();
 
         public func get(_key: Text): ?[Text]{
             let key =  Utils.toLowercase(_key);
@@ -279,7 +278,7 @@ module HttpRequestParser {
 
         let defaultForm = object {
             public let keys:[Text] = [];
-            public let hashMap = HashMap.HashMap<Text, [Text]>(0, Text.equal, Text.hash);
+            public let hashMap = TrieMap.TrieMap<Text, [Text]>(Text.equal, Text.hash);
             public let get = hashMap.get;
 
             public let fileKeys:[Text] =[];
@@ -317,7 +316,6 @@ module HttpRequestParser {
                 };
             };
         };
-
     };
 
     public func parse (req: HttpRequest): T.ParsedHttpRequest = object {
