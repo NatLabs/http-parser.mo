@@ -6,6 +6,7 @@ import Debug "mo:base/Debug";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";
+import Nat16 "mo:base/Nat16";
 import Nat32 "mo:base/Nat32";
 import Option "mo:base/Option";
 import Text "mo:base/Text";
@@ -14,6 +15,9 @@ import ArrayModule "mo:array/Array";
 import Hex "mo:encoding/Hex";
 import Query "mo:http/Query";
 import JSON "mo:json/JSON";
+import F "mo:format";
+
+// import HttpParser "lib";
 
 module {
     public func textToNat( txt : Text) : Nat {
@@ -59,19 +63,15 @@ module {
     };
 
     public func arraySliceToBuffer<T>(arr: [T], start: Nat, end: Nat): Buffer.Buffer<T>{
-        if (end >= arr.size() or end < start) return Buffer.Buffer<T>(0);
-
-        let buffer = Buffer.Buffer<T>(arr.size());
-        for (n in arr.vals()){
-            buffer.add(n);
-        };
+        let slice = ArrayModule.slice(arr, start, end);
+        let buffer = arrayToBuffer<T>(slice);
         return buffer;
     };
 
     public func n8ToChar(n8: Nat8): Char{
         let n = Nat8.toNat(n8);
         let n32 = Nat32.fromNat(n);
-        let char = Char.fromNat32(n32);
+        Char.fromNat32(n32);
     };
 
     public func enumerate<A>(iter: Iter.Iter<A> ): Iter.Iter<(Nat, A)> {
@@ -91,9 +91,16 @@ module {
         };
     };
 
+    public func trimEOL(text: Text): Text{
+        func pattern(c: Char): Bool{
+            Text.contains("\n\r", #char c);
+        };
+        return Text.trim(text, #predicate(pattern));
+    };
+
     public func trimSpaces(text: Text): Text{
         func pattern(c: Char): Bool{
-            Text.contains("\n\r\t ", #char c);
+            Text.contains("\t ", #char c);
         };
         return Text.trim(text, #predicate(pattern));
     };
@@ -114,4 +121,5 @@ module {
         ""
     };
 
+    
 }

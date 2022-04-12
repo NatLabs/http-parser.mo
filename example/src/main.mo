@@ -2,8 +2,12 @@ import Debug "mo:base/Debug";
 import Nat16 "mo:base/Nat16";
 import Option "mo:base/Option";
 import Text "mo:base/Text";
+import Blob "mo:base/Blob";
 import Time "mo:base/Time";
+import Iter "mo:base/Iter";
 
+import DebugModule "../../src/Debug";
+import Utils "../../src/Utils";
 import F "mo:format";
 // import HttpParser "mo:HttpParser";
 import HttpParser "../../src"; // --del
@@ -17,9 +21,11 @@ actor {
         Debug.print(F.format("Method ({})", [#text(req.method)]));
         Debug.print("\n");
 
-        let {host; port; path; queryObj; anchor; original = url} = req.url;
+        let {host; port; protocol; path; queryObj; anchor; original = url} = req.url;
 
         Debug.print(F.format("URl ({})", [#text(url)]));
+
+        Debug.print(F.format("Protocol ({})", [#text(protocol)]));
 
         Debug.print(F.format("Host ({})", [#text(host.original)]));
         Debug.print(F.format("Host ({})", [#textArray (host.array)]));
@@ -29,7 +35,7 @@ actor {
         Debug.print(F.format("Path ({})", [#text(path.original)]));
         Debug.print(F.format("Path ({})", [#textArray (path.array)]));
 
-        for ((key, value) in queryObj.hashMap.entries()){   
+        for ((key, value) in queryObj.trieMap.entries()){   
             Debug.print(F.format("Query ({}: {})", [#text(key), #text(value)]));
         };
 
@@ -62,8 +68,8 @@ actor {
                         case(?files){
                             for (file in files.vals()){
                                 Debug.print( F.format(
-                                    "File ({}: filename: \"{}\", mime: \"{}/{}\", {} bytes)",
-                                    [#text(name), #text(file.filename), #text(file.mimeType), #text(file.mimeSubType), #num(file.bytes.size())]
+                                    "File ({}: filename: \"{}\", mime: \"{}/{}\", {} bytes from [start: {}, end: {}])",
+                                    [#text(name), #text(file.filename), #text(file.mimeType), #text(file.mimeSubType), #num(file.bytes.size()), #num(file.start), #num(file.end)]
                                     ) );
                             };
                         };
@@ -80,17 +86,19 @@ actor {
 
         
     };
-    
+
+
     public query func http_request(rawReq: HttpParser.HttpRequest) : async HttpParser.HttpResponse {
+
         let req = HttpParser.parse(rawReq);
         debugRequestParser(req);
 
         let name = switch(req.url.queryObj.get("name")){
-            case (?name) name;
+            case (?_name) _name;
             case (_) "";
         };
        
-        let htmlPage = "<html><head><title> http_request </title></head><body><h1>" # greet("name") # "</h1><br><form \"multipart/form-data\" action=\".\" >\n    <div><label for=\"fname\">First Name</label>\n    <input type=\"text\" id=\"fname\" name=\"firstname\" placeholder=\"Your name..\"></div>\n\n    <div><label for=\"lname\">Last Name</label>\n    <input type=\"text\" id=\"lname\" name=\"lastname\" placeholder=\"Your last name..\"></div>\n\n    <div><label for=\"country\">Country</label>\n    <select id=\"country\" name=\"country\">\n      <option value=\"australia\">Australia</option>\n      <option value=\"canada\">Canada</option>\n      <option value=\"usa\">USA</option>\n    </select></div>\n\n  <div><label for=\"files\">Files</label>\n <input id=\"files\" multiple type=\"file\" > \n  <input  type=\"submit\" value=\"Submit\"></div>\n  </form>\n <script>\nconst form = document.querySelector(\"form\")\n const handleSubmit = (e)=>{\n e.preventDefault() \nvar input = document.querySelector(\'input[type=\"file\"]\')\n\nvar data = new FormData(form)\ndata.append(\'file\', input.files[0])\ndata.append(\'file\', input.files[1])\ndata.append(\'duplicate-field\', \"value1\")\ndata.append(\'duplicate-field\', \"value3\")\ndata.append(\'Duplicate-field\', \"value2\")\n\nfetch(\'.\', {\n  method: \'POST\',\nheaders:{\n    \"duplicate-header\":\"john\",\n    \"Duplicate-Header\":\"fred\",\n},\n  body: data\n}).then(res=>res.text())\n\n}\n form.addEventListener(\"submit\", handleSubmit)</script></body></html>\n";
+        let htmlPage = "<html><head><title> http_request </title></head><body><h1>" # greet(name) # "</h1><br><form \"multipart/form-data\" action=\".\" >\n    <div><label for=\"fname\">First Name</label>\n    <input type=\"text\" id=\"fname\" name=\"firstname\" placeholder=\"Your name..\"></div>\n\n    <div><label for=\"lname\">Last Name</label>\n    <input type=\"text\" id=\"lname\" name=\"lastname\" placeholder=\"Your last name..\"></div>\n\n    <div><label for=\"country\">Country</label>\n    <select id=\"country\" name=\"country\">\n      <option value=\"australia\">Australia</option>\n      <option value=\"canada\">Canada</option>\n      <option value=\"usa\">USA</option>\n    </select></div>\n\n  <div><label for=\"files\">Files</label>\n <input id=\"files\" multiple type=\"file\" > \n  <input  type=\"submit\" value=\"Submit\"></div>\n  </form>\n <script>\nconst form = document.querySelector(\"form\")\n const handleSubmit = (e)=>{\n e.preventDefault() \nvar input = document.querySelector(\'input[type=\"file\"]\')\n\nvar data = new FormData(form)\ndata.append(\'file\', input.files[0])\ndata.append(\'file\', input.files[1])\ndata.append(\'duplicate-field\', \"value1\")\ndata.append(\'duplicate-field\', \"value3\")\ndata.append(\'Duplicate-field\', \"value2\")\n\nfetch(\'.\', {\n  method: \'POST\',\nheaders:{\n    \"duplicate-header\":\"john\",\n    \"Duplicate-Header\":\"fred\",\n},\n  body: data\n}).then(res=>res.text())\n\n}\n form.addEventListener(\"submit\", handleSubmit)</script></body></html>\n";
         
         {
             status_code = 200;

@@ -3,6 +3,22 @@ import Buffer "mo:base/Buffer";
 import JSON "mo:json/JSON";
 
 module {
+
+    public type HeaderField = (Text, Text);
+
+    public type HttpRequest = {
+        url     : Text;
+        method  : Text;
+        body    : Blob;
+        headers : [HeaderField];
+    };
+
+    public type HttpResponse = {
+        body        : Blob;
+        headers     : [HeaderField];
+        status_code : Nat16;
+    };
+
     public type File = {
         name: Text;
         filename: Text;
@@ -17,7 +33,7 @@ module {
 
     public type FormObjType = {
         get: (Text) -> ?[Text];
-        hashMap: TrieMap.TrieMap<Text, [Text]>;
+        trieMap: TrieMap.TrieMap<Text, [Text]>;
         keys: [Text];
         
         fileKeys: [Text];
@@ -41,7 +57,7 @@ module {
             queryObj: {
                 original: Text;
                 get: (Text) -> ?Text;
-                hashMap: TrieMap.TrieMap<Text, Text>;
+                trieMap: TrieMap.TrieMap<Text, Text>;
                 keys: [Text]; 
             };
             anchor: Text; 
@@ -49,7 +65,7 @@ module {
         headers: {
             original: [(Text, Text)];
             get: (Text) -> ?[Text];
-            hashMap: TrieMap.TrieMap<Text, [Text]>;
+            trieMap: TrieMap.TrieMap<Text, [Text]>;
             keys: [Text];
         };
         body: ?{ 

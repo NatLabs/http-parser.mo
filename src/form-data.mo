@@ -8,8 +8,8 @@ import Result "mo:base/Result";
 import ArrayModule "mo:array/Array";
 import F "mo:format";
 
-import T "types";
-import Utils "utils";
+import T "Types";
+import Utils "Utils";
 import MultiValueMap "MultiValueMap";
 
 module {
@@ -70,7 +70,7 @@ module {
         let arr = Iter.toArray(Text.tokens(line, #char ':'));
 
         return if (arr.size() > 1){
-            let mime = Iter.toArray(Text.tokens( arr[1], #char '/'));
+            let mime = Iter.toArray(Text.tokens( trimQuotesAndSpaces(arr[1]), #char '/'));
             let mimeType = mime[0];
             let mimeSubType = if (mime.size() > 1 ){
                 mime[1];
@@ -100,6 +100,9 @@ module {
 
         var lineIndexFromBoundary = 0;
         var contentType = "";
+        var includesContentType = false;
+        var canConcat = true;
+
         var name = "";
         var filename = "";
 
@@ -112,23 +115,30 @@ module {
 
         label l for ((i, char) in Utils.enumerate<Char>(chars)){
 
-            let isIndexBeforeContent =  lineIndexFromBoundary > 0 and lineIndexFromBoundary <= 4;
-            let isBoundary = Text.startsWith(boundary, #text(line));
-            let isExitBoundary = Text.startsWith(exitBoundary, #text(line));
+            let isIndexBeforeContent =  lineIndexFromBoundary > 0 and lineIndexFromBoundary <= 2;
+
+            let newLine = line # Char.toText(char);
+            let isBoundary = Text.startsWith(boundary, #text(newLine));
+            let isExitBoundary = (newLine ==( boundary #"-")) or (newLine == exitBoundary);
 
             let store = isIndexBeforeContent or isBoundary or isExitBoundary; 
 
-            if (store){
-                line := Utils.trimSpaces(line # Char.toText(char));
+            if ( canConcat and store){
+                // Debug.print("l: '" # newLine # "'");
+                line := Utils.trimEOL(newLine);
+            }else{
+                canConcat := false;
             };
 
-            if (char == '\n') {
+            if (char == '\n'){ 
+
+                // Debug.print("newline");
                 // Get's the boundary from the first line if it wasn't specified
                 if (lineIndexFromBoundary == 0){
                     if (boundary == ""){
-                        if (Text.startsWith(line, #text "--")){
+                        if (Text.startsWith(line, #text(delim))){
                             boundary:= line;
-                            exitBoundary:=boundary # "--";
+                            exitBoundary:=boundary # delim;
                         }else{
                             return #err(#BoundaryNotDetected);
                         };
@@ -154,17 +164,22 @@ module {
                         let (_mimeType, _mimeSubType) = parseContentType(line);
                         mimeType:= _mimeType;
                         mimeSubType:=_mimeSubType;
+
+                        includesContentType := true;
                     };
                 };
 
                 if (lineIndexFromBoundary == 3 or lineIndexFromBoundary == 4){
-                    if (line != "" and start == 0){
-                         start := prevRowIndex + 1;
+                    if ((not includesContentType) and start == 0){
+                        start := prevRowIndex + 1;
                     };
+                    includesContentType:= false;
                 };
 
                 if (lineIndexFromBoundary > 1  and (line  == boundary or line  == exitBoundary)){
                     end:= prevRowIndex - 1;
+
+                    // Debug.print("bytes to buffer/text");
 
                     if (filename != ""){
                         filesMVMap.add(name, {
@@ -189,6 +204,7 @@ module {
                             case(_) return #err(#UTF8DecodeError);
                         };
                     };
+                    // Debug.print("Conversion Done");
 
                     lineIndexFromBoundary := 0;
 
@@ -207,14 +223,15 @@ module {
                 line:= "";
                 prevRowIndex := i;
                 lineIndexFromBoundary+=1;
+                canConcat:= true;
             };
 
         };
         
         return #ok(object {
-            public let hashMap = fields.freezeValues();
-            public let keys = Iter.toArray(hashMap.keys());
-            public let get = hashMap.get;
+            public let trieMap = fields.freezeValues();
+            public let keys = Iter.toArray(trieMap.keys());
+            public let get = trieMap.get;
 
             let filesMap = filesMVMap.freezeValues();
             public let fileKeys = Iter.toArray(filesMap.keys());
