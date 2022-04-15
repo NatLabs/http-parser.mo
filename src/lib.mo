@@ -64,83 +64,7 @@ module HttpRequestParser {
         public let keys = pairs.keys;
     };
 
-    public class URL (url: Text){
-        var url_str = url;  
-        let href = url_str;       
-        public let original = href;
-        
-        let (_protocol, str_wp) = switch (Text.stripStart(href, #text "https:")){
-            case (?str)  ("https", str);
-            case (_) 
-                switch (Text.stripStart(href, #text "http:")){
-                    case (?str) ("http", str);
-                    case (_) ("https", href);
-                };
-        };
-
-        url_str:=str_wp;
-
-        public let protocol = _protocol;
-
-        let p =  Iter.toArray(Text.tokens(url_str, #char('#')));
-
-        public let anchor = if (p.size() > 1){
-            url_str := p[0];
-            p[1]
-        }else {
-            url_str := p[0];
-            ""
-        };
-
-        
-        let re = Iter.toArray(Text.tokens(url_str, #char('?')));
-
-        let queryString: Text = switch (re.size()){
-            case (0) {
-                url_str := "";
-                re[1] 
-            };
-            case (1){
-                url_str := re[0];
-                ""
-            };
-
-            case (_){
-                url_str := re[0];
-                re[1]
-            };
-            
-        };
-
-        public let queryObj: SearchParams = SearchParams(queryString);
-
-        let path_iter = Text.tokens(url_str, #char('/')); 
-
-        let (_host, _port): (Text, Nat16) = switch(path_iter.next()){
-            case(?_authority){
-                let authority = Iter.toArray(Text.tokens(_authority, #char(':')));
-                switch (authority.size()){
-                    case (0) ("", defaultPort(protocol));
-                    case (1) (authority[0], defaultPort(protocol));
-                    case (_) (authority[0], Nat16.fromNat(Utils.textToNat(authority[1])));
-                };
-            };
-            case(_) ("", defaultPort(protocol));
-        };
-
-        public let port = _port;
-
-        public let host = object {
-            public let original = _host;
-            public let array = Iter.toArray(Text.tokens(_host, #char('.')));
-        };
-
-        public let path = object {
-            public let array = Iter.toArray(path_iter);
-            public let original = "/" # Text.join("/", Iter.fromArray(array));
-        };
-
-    };
+    
 
     public class Headers(headers: [HeaderField]) {
         public let original = headers;
@@ -168,6 +92,78 @@ module HttpRequestParser {
         };
 
         public let keys = Iter.toArray(trieMap.keys());
+    };
+
+    public class URL (url: Text, headers: Headers){
+
+        
+        var url_str = (Option.unwrap(headers.get("host")))[0];  
+
+
+        let href = url_str;       
+        public let original = href;
+        
+        
+
+        public let protocol = "https"; 
+
+        let authority = Iter.toArray(Text.tokens(url_str, #char(':')));
+        let (_host, _port): (Text, Nat16) = switch (authority.size()){
+            case (0) ("", defaultPort(protocol));
+            case (1) (authority[0], defaultPort(protocol));
+            case (_) (authority[0], Nat16.fromNat(Utils.textToNat(authority[1])));
+        };
+
+
+        public let port = _port;
+
+        public let host = object {
+            public let original = _host;
+            public let array = Iter.toArray(Text.tokens(_host, #char('.')));
+        }; 
+
+        url_str:= url;
+
+        let p =  Iter.toArray(Text.tokens(url_str, #char('#')));
+
+        public let anchor = if (p.size() > 1){
+            url_str := p[0];
+            p[1]
+        }else {
+            url_str := p[0];
+            ""
+        };
+        
+        let re = Iter.toArray(Text.tokens(url, #char('?')));
+
+        let queryString: Text = switch (re.size()){
+            case (0) {
+                url_str := "";
+                re[1] 
+            };
+            case (1){
+                url_str := re[0];
+                ""
+            };
+
+            case (_){
+                url_str := re[0];
+                re[1]
+            };
+            
+        };
+
+        public let queryObj: SearchParams = SearchParams(queryString);
+
+        let path_iter = Text.tokens(url_str, #char('/')); 
+
+        public let path = object {
+            public let array = Iter.toArray(path_iter);
+            public let original = "/" # Text.join("/", Iter.fromArray(array));
+        };
+        
+
+
     };
 
     public func parseForm(blob: Blob, formType: FormDataType): Result.Result<Types.FormObjType, ()> {
@@ -320,9 +316,11 @@ module HttpRequestParser {
     };
 
     public func parse (req: HttpRequest): Types.ParsedHttpRequest = object {
+
         public let method = req.method;
-        public let url: URL = URL(req.url);
         public let headers: Headers = Headers(req.headers);
+        public let url: URL = URL(req.url, headers);
+        
         public let body: ?Body = if ( method != "GET") {
             let contentTypeValues = headers.get("Content-Type");
             let contentType = switch(contentTypeValues){
