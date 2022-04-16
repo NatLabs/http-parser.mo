@@ -2,7 +2,12 @@
 A http request parser for parsing url, search query, headers and form data.
 
 ## Usage
-
+- Import Module
+```
+    import HttpParser "mo:HttpParser";
+```
+- Parse incoming http request
+-  ex:  retrieving the `name` field from the url query
 ```motoko
     public query func http_request(rawReq: HttpParser.HttpRequest) : async HttpParser.HttpResponse {
         let req = HttpParser.parse(rawReq);

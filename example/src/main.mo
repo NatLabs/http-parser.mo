@@ -10,7 +10,7 @@ import DebugModule "../../src/Debug";
 import Utils "../../src/Utils";
 import F "mo:format";
 
-// import HttpParser "mo:HttpParser" --uncomment;
+// import HttpParser "mo:HttpParser"; --uncomment;
 import HttpParser "../../src"; // --del
 
 actor {
