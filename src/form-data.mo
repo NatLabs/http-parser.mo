@@ -1,7 +1,6 @@
 import ArrayModule "mo:array/Array";
 import Blob "mo:base/Blob";
 import Char "mo:base/Char";
-import Debug "mo:base/Debug";
 import Iter "mo:base/Iter";
 import MultiValueMap "MultiValueMap";
 import Nat "mo:base/Bool";

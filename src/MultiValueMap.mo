@@ -1,5 +1,4 @@
 import Buffer "mo:base/Buffer";
-import Debug "mo:base/Debug";
 import TrieMap "mo:base/TrieMap";
 import Iter "mo:base/Iter";
 import Hash "mo:base/Hash";

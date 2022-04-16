@@ -128,7 +128,7 @@ module HttpRequestParser {
             ""
         };
         
-        let re = Iter.toArray(Text.tokens(url, #char('?')));
+        let re = Iter.toArray(Text.tokens(url_str, #char('?')));
 
         let queryString: Text = switch (re.size()){
             case (0) {
@@ -319,7 +319,7 @@ module HttpRequestParser {
         public let method = req.method;
         public let headers: Headers = Headers(req.headers);
         public let url: URL = URL(req.url, headers);
-        
+
         public let body: ?Body = if ( method != "GET") {
             let contentTypeValues = headers.get("Content-Type");
             let contentType = switch(contentTypeValues){

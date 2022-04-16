@@ -1,4 +1,5 @@
 # HTTP Request Parser
+A http request parser for parsing url, search query, headers and form data.
 
 ## Usage
 

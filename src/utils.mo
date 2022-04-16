@@ -2,7 +2,6 @@ import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Char "mo:base/Char";
 import Buffer "mo:base/Buffer";
-import Debug "mo:base/Debug";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";
