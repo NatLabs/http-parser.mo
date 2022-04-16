@@ -97,11 +97,12 @@ let success = run([
   describe("HttpParser Tests", [
     describe("URL Tests", [
       it("Test 1: Successfully parse all fields", do {
-        let {url} = HttpParser.parse({url= "https://m7sm4-2iaaa-aaaab-qabra-cai.raw.ic0.app/counter/?tag=2526172523#myAnchor"; headers=[]; method= ""; body=Blob.fromArray([]) });
+        let {url; method} = HttpParser.parse({url= "m7sm4-2iaaa-aaaab-qabra-cai.raw.ic0.app/counter/?tag=2526172523#myAnchor"; headers=[]; method= "GET"; body=Blob.fromArray([]) });
 
         let {host; port; protocol; path; queryObj; anchor} = url;
 
         assertAllTrue([
+            method == "GET",
             protocol == "https",
             port == 443, 
             host.original == "m7sm4-2iaaa-aaaab-qabra-cai.raw.ic0.app",
@@ -121,12 +122,13 @@ let success = run([
       }),
 
       it("Test 2: Successfully parse all fields", do {
-        let url = HttpParser.URL("http://localhost:8000/tokens/345");
+        let headers = HttpParser.Headers([]);
+        let url = HttpParser.URL("localhost:8000/tokens/345", headers);
 
         let {host; port; protocol; path; queryObj; anchor} = url;
 
         assertAllTrue([
-            protocol == "http",
+            protocol == "https",
             port == 8000, 
             host.original == "localhost",
             host.array == ["localhost"],

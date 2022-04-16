@@ -33,7 +33,6 @@ module HttpRequestParser {
     };
 
     /// Decodes an encoded URL string and returns a `MultiValueMap` with the stored data
-
     public func parseURLEncodedPairs(encodedStr: Text): MultiValueMap.MultiValueMap<Text, Text>{
         let encodedPairs  =  Iter.toArray(Text.tokens(encodedStr, #text("&")));
 
@@ -55,7 +54,7 @@ module HttpRequestParser {
         return mvMap;
     };
 
-    /// A key/value interface for parsing query strings
+    /// A key/value interface for parsing URL query strings
     public class SearchParams(queryString: Text) {
         public let original = Text.trimStart(queryString, #char('?'));
         
@@ -94,7 +93,6 @@ module HttpRequestParser {
 
         public let keys = Iter.toArray(trieMap.keys());
     };
-
 
     public class URL (url: Text, headers: Headers){
         
@@ -160,7 +158,7 @@ module HttpRequestParser {
 
     };
 
-    /// The object is set to default if the content-type does not specify a valid form type
+    /// Parses both `url-encoded` and `multipart/form-data` forms
     public func parseForm(blob: Blob, formType: FormDataType): Result.Result<Types.Form, ()> {
         switch(formType){
             case (#multipart(boundary)){
@@ -315,7 +313,7 @@ module HttpRequestParser {
         };
     };
 
-    /// HTTP Request Parser 
+    /// Main function for parsing incoming http request in a canister
     public func parse (req: HttpRequest): Types.ParsedHttpRequest = object {
 
         public let method = req.method;

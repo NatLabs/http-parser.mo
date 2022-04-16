@@ -1,21 +1,21 @@
 
 ## API
 ### ParsedHttpRequest
-| Property | Description | Type | Default |
-| - | - | - | - | 
-| `method` | | `Text` | "" |
-| `url` | Url Obj | [URL](#url) | |
-| `headers` | Headers | [Header](#header) | |
-|`body`  | Body | ?[Body](#body) | |
+| Property | Description | Type |
+| - | - | - |
+| `method` | The http request method  | `Text` | 
+| `url` | Parsed Url Object. Decodes URL encoded queries | [URL](#url) |
+| `headers` | Parsed headers Object. Places headers entries into a TrieMap| [Header](#header) |
+|`body`  | Parsed Body Object. Returns null if the HTTP request is a GET request (method == "GET") | ?[Body](#body) |
 
 ### URL
 | Property | Description | Type |
 | - | - | - |
-| `original` | The url string in the HTTP Reques | `Text` |
-| `protocol` | `"http" \| "https"` | `Text` |
-| `port` | URL Port. Default to `443` if `protocol` is  **https** and `80` if it is **http** | `Nat16` |
-| `host` | An object with the url host ("www.google.com") stored as a string and as an array. Where the array is the result of the original string split at every dot (["www", "google", "com"]) | `{original: Text; array: [Text]}` |
-| `path` | An object with the url paths ("/category/items/34/") stored as a string and as an array. Where the array is the result of the original string split at every backslash  (["category", "items", "34"]) | `{original: Text; array: [Text]}` |
+| `original` | The url string in the HTTP Request | `Text` |
+| `protocol` | always **https** | `Text` |
+| `port` | URL Port. Default to `443` if it's not defined | `Nat16` |
+| `host` | An object with the url host stored as a string and as an array. The array is the result of the string split at every dot.<br/> <br/> ```original = "www.google.com"```<br/> `array =  ["www", "google", "com"]` | `{original: Text; array: [Text]}` |
+| `path` | An object with the url paths stored as a string and as an array. The array is the result of the string split at every backslash. <br/>  <br/> `original = "/categories/items/32"`, <br/>```array = ["categories", "items", "32"] ```| `{original: Text; array: [Text]}` |
 | `queryObj` | An object for accessing fields and values of a query string | [SearchParams](#searchParams) |
 | `anchor` | Everything after the symbol  `#` | `Text` |
 
