@@ -1,20 +1,21 @@
-import Debug "mo:base/Debug";
-import Nat16 "mo:base/Nat16";
 import Blob "mo:base/Blob";
-import Text "mo:base/Text";
 import Buffer "mo:base/Buffer";
+import Debug "mo:base/Debug";
+import HashMap "mo:base/HashMap";
 import Iter "mo:base/Iter";
 import Option "mo:base/Option";
-import HashMap "mo:base/HashMap";
+import Text "mo:base/Text";
+import Array "mo:base/Array";
+import Nat16 "mo:base/Nat16";
 
 import ArrayModule "mo:array/Array";
-import F "mo:format";
 import JSON "mo:json/JSON";
+import ActorSpec "./utils/ActorSpec";
 
+import F "mo:format";
 import HttpParser "../src/lib";
 import Types "../src/Types";
-// import DebugModule "../src/Debug";
-import ActorSpec "./utils/ActorSpec";
+import Utils "../src/Utils";
 
 let {assertTrue; assertFalse; assertAllTrue; describe; it; skip; pending; run} = ActorSpec;
 
@@ -41,7 +42,7 @@ func zipIter<A, B>(a: Iter.Iter<A>, b:Iter.Iter<B>): Iter.Iter<(A, B)>{
     }
 };
 
-func assertIsNull<T>(item: ?T):Bool {
+func assertNull<T>(item: ?T):Bool {
     switch(item){
         case(null) true;
         case(_) false
@@ -120,7 +121,7 @@ let success = run([
       }),
 
       it("Test 2: Successfully parse all fields", do {
-        let url = URL("http://localhost:8000/tokens/345");
+        let url = HttpParser.URL("http://localhost:8000/tokens/345");
 
         let {host; port; protocol; path; queryObj; anchor} = url;
 
@@ -167,6 +168,17 @@ let success = run([
                 queryObj.get("JOB")  == ?"Film Director",
              ])
           }),
+
+          it("Decodes URL Encoded pairs", do {
+              let queryObj = SearchParams("name=Dwayne%20Wade&language=French%26English");
+
+             assertAllTrue([
+                queryObj.keys == ["name", "language"],
+
+                queryObj.get("name")  == ?"Dwayne Wade",
+                queryObj.get("language")  == ?"French&English",
+             ])
+          })
     ]),
 
     describe("Headers Tests", [
@@ -222,7 +234,7 @@ let success = run([
 
             let jsonBlob = Text.encodeUtf8(json);
             let jsonBytes  = Blob.toArray(jsonBlob);
-            let body = Body(jsonBlob, ?"application/json");
+            let body = Body(jsonBlob, null);
 
             let {size; text; form; bytes; file} = body;
             
@@ -260,7 +272,101 @@ let success = run([
                 },
                 bytes(9, 23).toArray() == ArrayModule.slice(jsonBytes, 9, 23)
             ])
-          }),
+        }),
+
+        it("Parse URL Encoded Form Data", do{
+            let payload = [
+                "search=World%20Cup%20Series",
+                "name=Doug Brock",
+                "country=Australia",
+                "search=Permutation%20%26%20Combination"
+            ];
+
+            let urlEncodedData = Text.join("&", Iter.fromArray<Text>(payload));
+            let blob = Text.encodeUtf8(urlEncodedData);
+            let bytes  = Blob.toArray(blob);
+            let body = Body(blob, ?"application/x-www-form-urlencoded");
+
+            let {form} = body;
+
+            assertAllTrue([
+                body.original == blob,
+                body.size == blob.size(),
+                body.text() == urlEncodedData,
+
+                form.keys  == ["search", "name", "country"],
+                form.get("country")  == ?["Australia"],
+                form.get("name") == ?["Doug Brock"],
+                form.get("search") == ?["World Cup Series", "Permutation & Combination"],
+
+                form.fileKeys == [], 
+
+                switch(body.file()){
+                    case(?buffer) false;
+                    case(null) true;
+                },
+
+                body.bytes(9, 23).toArray() == ArrayModule.slice(bytes, 9, 23)
+            ])
+        }),
+
+        it("Parse Multipart Form Data", do{
+            let boundary = "boundary";
+            let payload = [
+                "--" # boundary,
+                "Content-Disposition: form-data; name=\"field1\"",
+                "",
+                "value1",
+                "--" # boundary,
+                "Content-Disposition: form-data; name=\"field2\"; filename=\"example.txt\"",
+                "Content-Type: text/plain",
+                "",
+                "value2",
+                "--" # boundary # "--"
+            ];
+
+            let formData = Text.join("\n", Iter.fromArray<Text>(payload)) # "\n";
+            let blob = Text.encodeUtf8(formData);
+            let blobArray = Blob.toArray(blob);
+
+            let body = HttpParser.Body(blob, ?"multipart/form-data");
+            let {form} = body;
+
+            assertAllTrue([
+                body.original == blob,
+                body.size == blob.size(),
+                body.text() == formData,
+
+                form.keys == ["field1"],
+                form.get("field1") == ?["value1"],
+                
+                form.fileKeys == ["field2"],
+
+                switch(form.files("field2")){
+                    case(?arr){
+                        let file = arr[0];
+
+                        assertAllTrue([
+                            file.name == "field2",
+                            file.filename == "example.txt",
+                    
+                            file.mimeType == "text",
+                            file.mimeSubType == "plain",
+                    
+                            file.start == 172,
+                            file.end == 178,
+                            
+                            file.bytes.toArray() == Utils.textToBytes("value2"),
+                            file.bytes.toArray() == ArrayModule.slice(blobArray, 172, 178)
+
+                        ])
+                    };
+
+                    case(_) false;
+                }
+            ])
+
+        })
     ]),
   ]),
 ]);

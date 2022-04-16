@@ -98,7 +98,7 @@ module {
 
         // returns a new TrieMap with the values stored in immutable arrays instead of buffers
         public func freezeValues(): TrieMap.TrieMap<K, [V]>{
-            TrieMap.fromEntries<K, [V]>(entries(), isKeyEq, keyHash);
+            TrieMap.fromEntries<K, [V]>(entries(), isKeyEq, keyHash)
         };
 
         // returns a TrieMap where only the first value of each entry is stored

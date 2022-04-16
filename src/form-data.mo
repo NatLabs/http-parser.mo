@@ -1,16 +1,14 @@
+import ArrayModule "mo:array/Array";
 import Blob "mo:base/Blob";
 import Char "mo:base/Char";
 import Debug "mo:base/Debug";
 import Iter "mo:base/Iter";
-import Text "mo:base/Text";
-import Result "mo:base/Result";
-
-import ArrayModule "mo:array/Array";
-import F "mo:format";
-
-import T "Types";
-import Utils "Utils";
 import MultiValueMap "MultiValueMap";
+import Nat "mo:base/Bool";
+import Result "mo:base/Result";
+import T "Types";
+import Text "mo:base/Text";
+import Utils "Utils";
 
 module {
 
@@ -29,10 +27,14 @@ module {
             public func next ():?Char {
                 if (i == blobArray.size()) return null;
 
-                let nextVal = blobArray[i];
+                let val = blobArray[i];
                 i+=1;
 
-                return ?Utils.n8ToChar(nextVal);
+                return ?Utils.nat8ToChar(val);
+            };
+
+            public func skip (){
+                i+=1;
             };
         };
     };
@@ -111,11 +113,15 @@ module {
 
         var start = 0;
         var end  = 0;
-        var prevRowIndex = 0;
 
-        label l for ((i, char) in Utils.enumerate<Char>(chars)){
+        var prevLineEnd = 0;
+        var is_EOL_LF_CR = false;
+        
+        let textIter = Utils.enumerate<Char>(chars);
 
-            let isIndexBeforeContent =  lineIndexFromBoundary > 0 and lineIndexFromBoundary <= 2;
+        label l for ((i, char) in textIter){
+
+            let isIndexBeforeContent =  lineIndexFromBoundary >= 0 and lineIndexFromBoundary <= 2;
 
             let newLine = line # Char.toText(char);
             let isBoundary = Text.startsWith(boundary, #text(newLine));
@@ -124,15 +130,22 @@ module {
             let store = isIndexBeforeContent or isBoundary or isExitBoundary; 
 
             if ( canConcat and store){
-                // Debug.print("l: '" # newLine # "'");
                 line := Utils.trimEOL(newLine);
             }else{
                 canConcat := false;
             };
 
-            if (char == '\n'){ 
+            if (char == '\n' or char == '\r' or line == exitBoundary){ 
 
-                // Debug.print("newline");
+                // skips the next char if EOL == '\r\n'
+                if (char == '\r' and Utils.nat8ToChar(blobArray[i+1]) == '\n'){
+                    if (is_EOL_LF_CR == false){ 
+                        is_EOL_LF_CR := true; 
+                    };
+                    
+                    ignore textIter.next();
+                };
+
                 // Get's the boundary from the first line if it wasn't specified
                 if (lineIndexFromBoundary == 0){
                     if (boundary == ""){
@@ -171,16 +184,16 @@ module {
 
                 if (lineIndexFromBoundary == 3 or lineIndexFromBoundary == 4){
                     if ((not includesContentType) and start == 0){
-                        start := prevRowIndex + 1;
+                        start := prevLineEnd  + (if (is_EOL_LF_CR) {2} else {1});
                     };
                     includesContentType:= false;
                 };
 
                 if (lineIndexFromBoundary > 1  and (line  == boundary or line  == exitBoundary)){
-                    end:= prevRowIndex - 1;
+                    end:= prevLineEnd;
 
-                    // Debug.print("bytes to buffer/text");
-
+                    // If the field has a filename, add it to files
+                    // if it doesn't, add it to fields
                     if (filename != ""){
                         filesMVMap.add(name, {
                             name = name;
@@ -204,7 +217,6 @@ module {
                             case(_) return #err(#UTF8DecodeError);
                         };
                     };
-                    // Debug.print("Conversion Done");
 
                     lineIndexFromBoundary := 0;
 
@@ -221,7 +233,7 @@ module {
                 if (line  == exitBoundary) {break l};
                
                 line:= "";
-                prevRowIndex := i;
+                prevLineEnd := i;
                 lineIndexFromBoundary+=1;
                 canConcat:= true;
             };

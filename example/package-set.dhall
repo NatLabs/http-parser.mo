@@ -5,7 +5,7 @@ let additions = [
   { name = "HttpParser"
   , repo = "https://github.com/tomijaga/http-parser.mo"
   , version = "main"
-  , dependencies = [ "base", "http" ]
+  , dependencies = [ "base", "json", "array", "encoding"  ]
   },
   { name = "format"
   , repo = "https://github.com/tomijaga/format.mo"

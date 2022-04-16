@@ -19,6 +19,4 @@ dist/
 
 /dfx.json
 
-docs.md
-
 src/Debug.mo

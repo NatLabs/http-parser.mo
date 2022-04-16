@@ -1,5 +1,4 @@
 # HTTP Request Parser
-A http request parser for parsing url, search query, headers and form data.
 
 ## Usage
 
@@ -22,4 +21,4 @@ A http request parser for parsing url, search query, headers and form data.
     };
 ```
 
-Check out the [ParsedHttpRequest](./src/types.mo#L9) type in the [ documentation](./docs.md) for supported fields and methods
+Check out the data types [documentation](./docs.md) for supported fields and methods

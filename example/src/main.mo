@@ -67,6 +67,7 @@ actor {
                     switch(getFiles(name)){
                         case(?files){
                             for (file in files.vals()){
+
                                 Debug.print( F.format(
                                     "File ({}: filename: \"{}\", mime: \"{}/{}\", {} bytes from [start: {}, end: {}])",
                                     [#text(name), #text(file.filename), #text(file.mimeType), #text(file.mimeSubType), #num(file.bytes.size()), #num(file.start), #num(file.end)]
@@ -74,7 +75,7 @@ actor {
                             };
                         };
                         case(_){
-                            Debug.print("Error");
+                            Debug.print("Error retrieving File");
                         };
                     };
                 };
@@ -83,8 +84,6 @@ actor {
                 Debug.print( "no body" );
             };
         };
-
-        
     };
 
 

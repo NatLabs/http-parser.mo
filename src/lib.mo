@@ -32,7 +32,9 @@ module HttpRequestParser {
         if (protocol == "http"){80} else{443}
     };
 
-    public class URLEncodedPairs(encodedStr: Text){
+    /// Decodes an encoded URL string and returns a `MultiValueMap` with the stored data
+
+    public func parseURLEncodedPairs(encodedStr: Text): MultiValueMap.MultiValueMap<Text, Text>{
         let encodedPairs  =  Iter.toArray(Text.tokens(encodedStr, #text("&")));
 
         let mvMap = MultiValueMap.MultiValueMap<Text, Text>(Text.equal, Text.hash);
@@ -40,33 +42,34 @@ module HttpRequestParser {
         for (encodedPair in encodedPairs.vals()) {
             let pair : [Text] = Iter.toArray(Text.split(encodedPair, #char '='));
             if (pair.size()==2){
-                mvMap.add(pair[0], pair[1]);
+                let key = pair[0];
+                let val = pair[1];
+
+                let decodedKey = Option.get(Utils.decodeURIComponent(key), key);
+                let decodedVal = Option.get(Utils.decodeURIComponent(val), val);
+
+                mvMap.add(decodedKey, decodedVal);
             };
         };
 
-        public let keys = Iter.toArray(mvMap.keys());
-
-        public let toSingleValueMap = mvMap.toSingleValueMap;
-        public let multiValueMap = mvMap.freezeValues();
-
-        public func getValues(key: Text): ?[Text]{
-            return multiValueMap.get(key);
-        };
+        return mvMap;
     };
 
+    /// A key/value interface for parsing query strings
     public class SearchParams(queryString: Text) {
         public let original = Text.trimStart(queryString, #char('?'));
         
-        let pairs: URLEncodedPairs = URLEncodedPairs(original);
+        let params: MultiValueMap.MultiValueMap<Text, Text> = parseURLEncodedPairs(original);
 
-        public let trieMap = pairs.toSingleValueMap();
+        public let trieMap = params.toSingleValueMap();
         public let get = trieMap.get;
-        public let keys = pairs.keys;
+        public let keys = Iter.toArray(trieMap.keys());
     };
 
-    public class URL (url: Text){
+    public class URL (url: Text): Types.URL {
         var url_str = url;  
         let href = url_str;       
+
         public let original = href;
         
         let (_protocol, str_wp) = switch (Text.stripStart(href, #text "https:")){
@@ -91,7 +94,6 @@ module HttpRequestParser {
             url_str := p[0];
             ""
         };
-
         
         let re = Iter.toArray(Text.tokens(url_str, #char('?')));
 
@@ -142,7 +144,7 @@ module HttpRequestParser {
 
     };
 
-    public class Headers(headers: [HeaderField]) {
+    public class Headers(headers: [HeaderField]): Types.Headers {
         public let original = headers;
         let mvMap = MultiValueMap.MultiValueMap<Text, Text>(Text.equal, Text.hash);
 
@@ -170,7 +172,8 @@ module HttpRequestParser {
         public let keys = Iter.toArray(trieMap.keys());
     };
 
-    public func parseForm(blob: Blob, formType: FormDataType): Result.Result<Types.FormObjType, ()> {
+    /// The object is set to default if the content-type does not specify a valid form type
+    public func parseForm(blob: Blob, formType: FormDataType): Result.Result<Types.Form, ()> {
         switch(formType){
             case (#multipart(boundary)){
 
@@ -202,11 +205,11 @@ module HttpRequestParser {
                 switch( blobText ){
                     case (?text){
                         let result = object {
-                            let pairs = URLEncodedPairs(text);
+                            let pairs = parseURLEncodedPairs(text);
                             
-                            public let keys = pairs.keys;
-                            public let trieMap = pairs.multiValueMap;
-                            public let get = pairs.getValues;
+                            public let trieMap = pairs.freezeValues();
+                            public let keys = Iter.toArray(pairs.keys());
+                            public let get = trieMap.get;
 
                             public let fileKeys: [Text] =[];
                             public func files(key: Text):?[File]{
@@ -234,7 +237,11 @@ module HttpRequestParser {
         Text.startsWith(contentType, #text("application/x-www-form-urlencoded"))
     };
 
-    public class Body (blob: Blob, contentType: ?Text){ 
+    /// An interface with utility methods for accessing data sent through HTTP Request
+    /// #### Inputs
+    /// - `blob` - The HTTP Request data stored as a Blob data type
+    /// - `contentType` - The content-type value in the HTTP Request headers
+    public class Body (blob: Blob, contentType: ?Text): Types.Body{ 
         let blobArray = Blob.toArray(blob);
 
         public let original = blob;
@@ -307,6 +314,7 @@ module HttpRequestParser {
             };
         };
         
+        /// Returns the blob data as bytes if the data is not a valid form
         public func file(): ?Buffer.Buffer<Nat8>{
             switch (isForm){
                 case (true){
@@ -319,6 +327,7 @@ module HttpRequestParser {
         };
     };
 
+    /// HTTP Request Parser 
     public func parse (req: HttpRequest): Types.ParsedHttpRequest = object {
         public let method = req.method;
         public let url: URL = URL(req.url);
