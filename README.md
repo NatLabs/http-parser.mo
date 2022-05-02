@@ -3,7 +3,7 @@ A http request parser for parsing url, search query, headers and form data.
 
 ## Usage
 - Import Module
-```
+```motoko
     import HttpParser "mo:HttpParser";
 ```
 - Parse incoming http request
