@@ -2,12 +2,7 @@ import Debug "mo:base/Debug";
 import Nat16 "mo:base/Nat16";
 import Option "mo:base/Option";
 import Text "mo:base/Text";
-import Blob "mo:base/Blob";
-import Time "mo:base/Time";
-import Iter "mo:base/Iter";
 
-import DebugModule "../../src/Debug";
-import Utils "../../src/Utils";
 import F "mo:format";
 
 // import HttpParser "mo:HttpParser"; --uncomment;
