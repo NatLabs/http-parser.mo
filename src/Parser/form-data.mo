@@ -1,13 +1,15 @@
-import ArrayModule "mo:array/Array";
 import Blob "mo:base/Blob";
 import Char "mo:base/Char";
 import Iter "mo:base/Iter";
-import MultiValueMap "MultiValueMap";
 import Nat "mo:base/Bool";
 import Result "mo:base/Result";
-import T "Types";
 import Text "mo:base/Text";
-import Utils "Utils";
+
+import ArrayModule "mo:array/Array";
+
+import MultiValueMap "MultiValueMap";
+import T "../Types";
+import Utils "../Utils";
 
 module {
 

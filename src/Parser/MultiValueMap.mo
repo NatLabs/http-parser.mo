@@ -1,9 +1,9 @@
 import Buffer "mo:base/Buffer";
-import TrieMap "mo:base/TrieMap";
-import Iter "mo:base/Iter";
 import Hash "mo:base/Hash";
+import Iter "mo:base/Iter";
+import TrieMap "mo:base/TrieMap";
 
-import Utils "Utils";
+import Utils "../Utils";
 
 module {
     /// A Map extention of a TrieMap that can store multiple values for one key 

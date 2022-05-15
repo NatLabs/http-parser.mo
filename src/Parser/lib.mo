@@ -2,21 +2,21 @@ import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Buffer "mo:base/Buffer";
 import Debug "mo:base/Debug";
-import TrieMap "mo:base/TrieMap";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
 import Nat16 "mo:base/Nat16";
 import Option "mo:base/Option";
-import Text "mo:base/Text";
 import Result "mo:base/Result";
+import Text "mo:base/Text";
+import TrieMap "mo:base/TrieMap";
 
-import JSON "mo:json/JSON";
 import ArrayModule "mo:array/Array";
+import JSON "mo:json/JSON";
 
-import Types "Types";
-import Utils "Utils";
 import FormData "form-data";
 import MultiValueMap "MultiValueMap";
+import Types "../Types";
+import Utils "../Utils";
 
 module HttpRequestParser {
     

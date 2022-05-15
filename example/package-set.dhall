@@ -12,5 +12,10 @@ let additions = [
   , version = "main"
   , dependencies = [ "base" ]
   },
+  { name = "http"
+  , repo = "https://github.com/aviate-labs/http.mo"
+  , version = "v0.1.0"
+  , dependencies = [ "base" ]
+  },
 ] : List Package
 in  upstream # additions

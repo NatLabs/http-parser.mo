@@ -1,15 +1,15 @@
 import Array "mo:base/Array";
 import Blob "mo:base/Blob";
-import Char "mo:base/Char";
 import Buffer "mo:base/Buffer";
+import Char "mo:base/Char";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
-import Nat8 "mo:base/Nat8";
 import Nat16 "mo:base/Nat16";
 import Nat32 "mo:base/Nat32";
+import Nat8 "mo:base/Nat8";
 import Option "mo:base/Option";
-import Text "mo:base/Text";
 import Result "mo:base/Result";
+import Text "mo:base/Text";
 
 import ArrayModule "mo:array/Array";
 import Hex "mo:encoding/Hex";

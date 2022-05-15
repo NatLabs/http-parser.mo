@@ -13,7 +13,7 @@ import JSON "mo:json/JSON";
 import ActorSpec "./utils/ActorSpec";
 
 import F "mo:format";
-import HttpParser "../src/lib";
+import HttpParser "../src/Parser";
 import Types "../src/Types";
 import Utils "../src/Utils";
 

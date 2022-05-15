@@ -4,16 +4,59 @@ import Option "mo:base/Option";
 import Text "mo:base/Text";
 
 import F "mo:format";
-
+import Http "mo:http/Http";
 // import HttpParser "mo:HttpParser"; --uncomment;
-import HttpParser "../../src"; // --del
+
+import HttpParser "../../src/Parser"; // --del
+import HttpResponse "../../src/Response"; // --del
 
 actor {
-    func greet(name: Text): Text{
-        "Hello, " # name  # "! "
+    public query func http_request(rawReq: Http.Request) : async Http.Response {
+
+        let req = HttpParser.parse(rawReq);
+        debugRequestParser(req);
+
+        let { url} = req;
+        let { path; queryObj } = url;
+        
+        switch ((req.method, path.original)) {
+            case ("GET", "/") {
+                let optName = queryObj.get("name");
+                let name = Option.get(optName, "");
+                let form = htmlForm(name);
+                
+                HttpResponse.Builder()
+                    .status_code(200)
+                    .header("Content-Type", "text/html")
+                    .body(Text.encodeUtf8(form))
+                    .unwrap()
+            };
+            case("GET", "/form") {
+                HttpResponse.Builder()
+                    .status_code(Http.Status.Found)
+                    .header("Content-Type", "text/html")
+                    .bodyFromText("Redirect to <a href =\"/\"> home page </a>")
+                    .unwrap()
+            };
+            case ("POST", "/form"){
+                HttpResponse.Builder()
+                    .status_code(Http.Status.OK)
+                    .bodyFromText("Your Form has been uploaded successfully!")
+                    .unwrap()
+            };
+            case (_) {
+                HttpResponse.Builder()
+                    .status_code(Http.Status.NotFound)
+                    .unwrap()
+            };
+        }
     };
 
-    func debugRequestParser(req: HttpParser.ParsedHttpRequest ): (){
+    func htmlForm(name: Text): Text{
+        "<html><head><title> http_request </title></head><body><h1> Hello, " # name # "! </h1><br><form \"multipart/form-data\" method = \"post\" action=\"/form\" >\n    <div><label for=\"firstname\">First Name</label>\n    <input type=\"text\" id=\"firstname\" name=\"firstname\" placeholder=\"Your name..\"></div>\n\n    <div><label for=\"lastname\">Last Name</label>\n    <input type=\"text\" id=\"lastname\" name=\"lastname\" placeholder=\"Your last name..\"></div>\n\n    <div><label for=\"country\">Country</label>\n    <select id=\"country\" name=\"country\">\n      <option value=\"australia\">Australia</option>\n      <option value=\"canada\">Canada</option>\n      <option value=\"usa\">USA</option>\n    </select></div>\n\n  <div><label for=\"files\">Files</label>\n <input id=\"files\" multiple type=\"file\" > \n  <input  type=\"submit\" value=\"Submit\"></div>\n  </form>\n <script>\nconst form = document.querySelector(\"form\")\n const handleSubmit = (e)=>{\n  \nvar input = document.querySelector(\'input[type=\"file\"]\')\n\nvar data = new FormData(form)\ndata.append(\'file\', input.files[0])\ndata.append(\'file\', input.files[1])\ndata.append(\'duplicate-field\', \"value1\")\ndata.append(\'duplicate-field\', \"value3\")\ndata.append(\'Duplicate-field\', \"value2\")\n\nfetch(\'.\', {\n  method: \'POST\',\nheaders:{\n    \"duplicate-header\":\"john\",\n    \"Duplicate-Header\":\"fred\",\n},\n  body: data\n}).then(res=>res.text())\n\n}\n form.addEventListener(\"submit\", handleSubmit)</script></body></html>\n";
+    };
+
+     func debugRequestParser(req: HttpParser.ParsedHttpRequest ): (){
         Debug.print(F.format("Method ({})", [#text(req.method)]));
         Debug.print("\n");
 
@@ -81,25 +124,4 @@ actor {
             };
         };
     };
-
-
-    public query func http_request(rawReq: HttpParser.HttpRequest) : async HttpParser.HttpResponse {
-
-        let req = HttpParser.parse(rawReq);
-        debugRequestParser(req);
-
-        let name = switch(req.url.queryObj.get("name")){
-            case (?_name) _name;
-            case (_) "";
-        };
-       
-        let htmlPage = "<html><head><title> http_request </title></head><body><h1>" # greet(name) # "</h1><br><form \"multipart/form-data\" action=\".\" >\n    <div><label for=\"fname\">First Name</label>\n    <input type=\"text\" id=\"fname\" name=\"firstname\" placeholder=\"Your name..\"></div>\n\n    <div><label for=\"lname\">Last Name</label>\n    <input type=\"text\" id=\"lname\" name=\"lastname\" placeholder=\"Your last name..\"></div>\n\n    <div><label for=\"country\">Country</label>\n    <select id=\"country\" name=\"country\">\n      <option value=\"australia\">Australia</option>\n      <option value=\"canada\">Canada</option>\n      <option value=\"usa\">USA</option>\n    </select></div>\n\n  <div><label for=\"files\">Files</label>\n <input id=\"files\" multiple type=\"file\" > \n  <input  type=\"submit\" value=\"Submit\"></div>\n  </form>\n <script>\nconst form = document.querySelector(\"form\")\n const handleSubmit = (e)=>{\n e.preventDefault() \nvar input = document.querySelector(\'input[type=\"file\"]\')\n\nvar data = new FormData(form)\ndata.append(\'file\', input.files[0])\ndata.append(\'file\', input.files[1])\ndata.append(\'duplicate-field\', \"value1\")\ndata.append(\'duplicate-field\', \"value3\")\ndata.append(\'Duplicate-field\', \"value2\")\n\nfetch(\'.\', {\n  method: \'POST\',\nheaders:{\n    \"duplicate-header\":\"john\",\n    \"Duplicate-Header\":\"fred\",\n},\n  body: data\n}).then(res=>res.text())\n\n}\n form.addEventListener(\"submit\", handleSubmit)</script></body></html>\n";
-        
-        {
-            status_code = 200;
-            headers = [("Content-Type", "text/html")];
-            body = Text.encodeUtf8 (htmlPage);
-        }
-    };
-
 };

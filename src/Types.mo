@@ -1,5 +1,6 @@
-import TrieMap "mo:base/TrieMap";
 import Buffer "mo:base/Buffer";
+import TrieMap "mo:base/TrieMap";
+
 import JSON "mo:json/JSON";
 
 module {
