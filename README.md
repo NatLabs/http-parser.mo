@@ -40,6 +40,11 @@ A http request parser for parsing url, search query, headers and form data.
             }
         }
     };
+
+    func htmlPage(name: Text): Text {
+        "<html><head><title> http_request </title></head><body><h1> Hello, " # name # "! </h1></body></html>"
+    };
+
 ```
 
 Check out the data types [documentation](./docs.md) for supported fields and methods
