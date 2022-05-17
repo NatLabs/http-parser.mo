@@ -19,10 +19,10 @@ actor {
         let { url} = req;
         let { path; queryObj } = url;
         
-        switch ((req.method, path.original)) {
+        switch (req.method, path.original) {
             case ("GET", "/") {
                 let optName = queryObj.get("name");
-                let name = Option.get(optName, "");
+                let name = unwrapText(optName);
                 let form = htmlForm(name);
                 
                 HttpResponse.Builder()
@@ -39,10 +39,28 @@ actor {
                     .unwrap()
             };
             case ("POST", "/form"){
-                HttpResponse.Builder()
-                    .status_code(Http.Status.OK)
-                    .bodyFromText("Your Form has been uploaded successfully!")
-                    .unwrap()
+                switch (req.body){
+                    case (?body){
+                        let {form} = body;
+
+                        let firstname = Option.get(form.get("firstname"), [""]);
+                        let lastname = Option.get(form.get("lastname"), [""]);
+
+                        HttpResponse.Builder()
+                            .status_code(Http.Status.OK)
+                            .bodyFromText(
+                                firstname[0] # " " # lastname[0] # 
+                                " your form has been uploaded successfully!"
+                            )
+                            .unwrap()
+                    };
+                    case (_){
+                        HttpResponse.Builder()
+                            .status_code(Http.Status.BadRequest)
+                            .bodyFromText("Form details was not sent in the request body")
+                            .unwrap()
+                    }
+                }
             };
             case (_) {
                 HttpResponse.Builder()
@@ -50,6 +68,10 @@ actor {
                     .unwrap()
             };
         }
+    };
+
+    func unwrapText(optText: ?Text):Text{
+        Option.get(optText, "")
     };
 
     func htmlForm(name: Text): Text{
