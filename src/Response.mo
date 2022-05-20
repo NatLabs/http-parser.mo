@@ -7,8 +7,8 @@ import Blob "mo:base/Blob";
 
 module{
 
-    type StreamingStrategy = Types.StreamingStrategy;
-    type Response = Types.HttpResponse;
+    public type StreamingStrategy = Types.StreamingStrategy;
+    public type Response = Types.HttpResponse;
 
     type ResponseFunctor = {
         status_code: (Http.StatusCode) -> ResponseFunctor;
@@ -18,7 +18,9 @@ module{
         bodyFromArray: ([Nat8]) -> ResponseFunctor;
         update: (Bool) -> ResponseFunctor;
         streaming_strategy: (?StreamingStrategy) -> ResponseFunctor;
-        unwrap: () -> Http.Response;
+        enable_streaming: (token : Any, callback : shared () -> async ()) -> ResponseFunctor;
+        disable_streaming: () -> ResponseFunctor;
+        unwrap: () -> Response;
     };
 
     type ResponseBuildType = {
@@ -98,7 +100,30 @@ module{
                 })
             };
 
-            public func unwrap(): Http.Response{
+            public func enable_streaming(token: Any, callback: shared () -> async ()): ResponseFunctor{
+                functor({
+                    status_code = response.status_code;
+                    headers = response.headers;
+                    body = response.body;
+                    update = response.update;
+                    streaming_strategy = ?#Callback{
+                        token = token;
+                        callback = callback;
+                    };
+                })
+            };
+
+            public func disable_streaming(): ResponseFunctor{
+                functor({
+                    status_code = response.status_code;
+                    headers = response.headers;
+                    body = response.body;
+                    update = response.update;
+                    streaming_strategy = null;
+                })
+            };
+
+            public func unwrap(): Response{
                 {
                     status_code = response.status_code;
                     headers = Iter.toArray(response.headers.entries());
