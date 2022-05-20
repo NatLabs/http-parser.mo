@@ -12,20 +12,30 @@ module{
         body: (Blob) -> ResponseFunctor;
         bodyFromText: (Text) -> ResponseFunctor;
         bodyFromArray: ([Nat8]) -> ResponseFunctor;
+        update: (Bool) -> ResponseFunctor;
         unwrap: () -> Http.Response;
     };
 
     type ResponseBuildType = {
         status_code: Nat16;
         body: Blob;
-        headers: TrieMap.TrieMap<Text, Text>
+        headers: TrieMap.TrieMap<Text, Text>;
+        update: Bool;
+    };
+
+    public type Response = {
+        status_code: Nat16;
+        body: Blob;
+        headers: [(Text, Text)];
+        update: ?Bool;
     };
 
     public func Builder(): ResponseFunctor{
         let defaultResponse:ResponseBuildType = {
-            status_code = 0;
+            status_code = 200;
             headers = TrieMap.TrieMap<Text, Text>(Text.equal, Text.hash);
             body = Text.encodeUtf8("");
+            update = false;
         };
 
         functor(defaultResponse)
@@ -38,6 +48,7 @@ module{
                     status_code = status;
                     headers = response.headers;
                     body = response.body;
+                    update = response.update;
                 })
             };
 
@@ -51,6 +62,7 @@ module{
                     status_code = response.status_code;
                     headers = response.headers;
                     body = payload;
+                    update = response.update;
                 })
             };
 
@@ -64,11 +76,21 @@ module{
                 body(payload);
             };
 
+            public func update(activate: Bool): ResponseFunctor{
+                functor({
+                    status_code = response.status_code;
+                    headers = response.headers;
+                    body = response.body;
+                    update = activate;
+                })
+            };
+
             public func unwrap(): Http.Response{
                 {
                     status_code = response.status_code;
                     headers = Iter.toArray(response.headers.entries());
                     body = response.body;
+                    update = if (response.update) {?true} else {null};
                 }
             };
         }
