@@ -6,6 +6,10 @@ import Text "mo:base/Text";
 import Blob "mo:base/Blob";
 
 module{
+
+    type StreamingStrategy = Types.StreamingStrategy;
+    type Response = Types.HttpResponse;
+
     type ResponseFunctor = {
         status_code: (Http.StatusCode) -> ResponseFunctor;
         header: (Text, Text) -> ResponseFunctor;
@@ -13,6 +17,7 @@ module{
         bodyFromText: (Text) -> ResponseFunctor;
         bodyFromArray: ([Nat8]) -> ResponseFunctor;
         update: (Bool) -> ResponseFunctor;
+        streaming_strategy: (?StreamingStrategy) -> ResponseFunctor;
         unwrap: () -> Http.Response;
     };
 
@@ -21,13 +26,7 @@ module{
         body: Blob;
         headers: TrieMap.TrieMap<Text, Text>;
         update: Bool;
-    };
-
-    public type Response = {
-        status_code: Nat16;
-        body: Blob;
-        headers: [(Text, Text)];
-        update: ?Bool;
+        streaming_strategy: ?StreamingStrategy
     };
 
     public func Builder(): ResponseFunctor{
@@ -36,6 +35,7 @@ module{
             headers = TrieMap.TrieMap<Text, Text>(Text.equal, Text.hash);
             body = Text.encodeUtf8("");
             update = false;
+            streaming_strategy = null;
         };
 
         functor(defaultResponse)
@@ -49,6 +49,7 @@ module{
                     headers = response.headers;
                     body = response.body;
                     update = response.update;
+                    streaming_strategy = response.streaming_strategy;
                 })
             };
 
@@ -63,6 +64,7 @@ module{
                     headers = response.headers;
                     body = payload;
                     update = response.update;
+                    streaming_strategy = response.streaming_strategy;
                 })
             };
 
@@ -82,6 +84,17 @@ module{
                     headers = response.headers;
                     body = response.body;
                     update = activate;
+                    streaming_strategy = response.streaming_strategy;
+                })
+            };
+
+            public func streaming_strategy(strategy: ?StreamingStrategy): ResponseFunctor{
+                functor({
+                    status_code = response.status_code;
+                    headers = response.headers;
+                    body = response.body;
+                    update = response.update;
+                    streaming_strategy = strategy;
                 })
             };
 
@@ -91,6 +104,7 @@ module{
                     headers = Iter.toArray(response.headers.entries());
                     body = response.body;
                     update = if (response.update) {?true} else {null};
+                    streaming_strategy = response.streaming_strategy;
                 }
             };
         }

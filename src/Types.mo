@@ -15,10 +15,19 @@ module {
         headers : [HeaderField];
     };
 
+    public type StreamingStrategy = {
+        #Callback : {
+            token : Any;
+            callback : shared () -> async ();
+        };
+    };
+    
     public type HttpResponse = {
-        body        : Blob;
-        headers     : [HeaderField];
-        status_code : Nat16;
+        status_code: Nat16;
+        body: Blob;
+        headers: [(Text, Text)];
+        update: ?Bool;
+        streaming_strategy: ?StreamingStrategy;
     };
 
     // Data types used by this module
