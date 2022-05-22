@@ -34,7 +34,7 @@ actor {
                 .body(Text.encodeUtf8(form))
                 .unwrap()
             };
-            case("GET", "/form") {
+            case("GET", _ ) {
                 res
                 .status_code(Http.Status.Found)
                 .header("Content-Type", "text/html")
@@ -51,8 +51,7 @@ actor {
 
                         res
                         .bodyFromText(
-                            firstname[0] # " " # lastname[0] # 
-                            " your form has been uploaded successfully!"
+                            "Congratulations " # firstname[0] # " " # lastname[0] # ", you completed the form!"
                         )
                         .unwrap()
                     };

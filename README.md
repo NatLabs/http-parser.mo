@@ -49,7 +49,7 @@ This code snippet shows a simple example of how to retrieve data from a request,
                 };
                 case ("POST", "/form"){
                     res
-                    .bodyFromText("Your Form has been uploaded successfully!")
+                    .bodyFromText("Congratulations, you completed the form!")
                     .unwrap()
                 };
                 case (_) {
