@@ -9,9 +9,11 @@ import Http "mo:http/Http";
 
 import HttpParser "../../src/Parser"; // --del
 import HttpResponse "../../src/Response"; // --del
+import Types "../../src/Types"; // --del
+
 
 actor {
-    public query func http_request(rawReq: Http.Request) : async Http.Response {
+    public query func http_request(rawReq: Types.Request) : async Types.HttpResponse {
 
         let req = HttpParser.parse(rawReq);
         debugRequestParser(req);
