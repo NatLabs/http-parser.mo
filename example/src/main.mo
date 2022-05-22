@@ -13,7 +13,7 @@ import Types "../../src/Types"; // --del
 
 
 actor {
-    public query func http_request(rawReq: Types.Request) : async Types.HttpResponse {
+    public query func http_request(rawReq: Types.HttpRequest) : async Types.HttpResponse {
 
         let req = HttpParser.parse(rawReq);
         debugRequestParser(req);
