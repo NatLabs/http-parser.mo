@@ -18,6 +18,8 @@ actor {
 
         let { url} = req;
         let { path; queryObj } = url;
+
+        let res = HttpResponse.Builder();
         
         switch (req.method, path.original) {
             case ("GET", "/") {
@@ -25,18 +27,17 @@ actor {
                 let name = unwrapText(optName);
                 let form = htmlForm(name);
                 
-                HttpResponse.Builder()
-                    .status_code(200)
-                    .header("Content-Type", "text/html")
-                    .body(Text.encodeUtf8(form))
-                    .unwrap()
+                res // defaults to status code 200
+                .header("Content-Type", "text/html")
+                .body(Text.encodeUtf8(form))
+                .unwrap()
             };
             case("GET", "/form") {
-                HttpResponse.Builder()
-                    .status_code(Http.Status.Found)
-                    .header("Content-Type", "text/html")
-                    .bodyFromText("Redirect to <a href =\"/\"> home page </a>")
-                    .unwrap()
+                res
+                .status_code(Http.Status.Found)
+                .header("Content-Type", "text/html")
+                .bodyFromText("Redirect to <a href =\"/\"> home page </a>")
+                .unwrap()
             };
             case ("POST", "/form"){
                 switch (req.body){
@@ -46,26 +47,25 @@ actor {
                         let firstname = Option.get(form.get("firstname"), [""]);
                         let lastname = Option.get(form.get("lastname"), [""]);
 
-                        HttpResponse.Builder()
-                            .status_code(Http.Status.OK)
-                            .bodyFromText(
-                                firstname[0] # " " # lastname[0] # 
-                                " your form has been uploaded successfully!"
-                            )
-                            .unwrap()
+                        res
+                        .bodyFromText(
+                            firstname[0] # " " # lastname[0] # 
+                            " your form has been uploaded successfully!"
+                        )
+                        .unwrap()
                     };
                     case (_){
-                        HttpResponse.Builder()
-                            .status_code(Http.Status.BadRequest)
-                            .bodyFromText("Form details was not sent in the request body")
-                            .unwrap()
+                        res
+                        .status_code(Http.Status.BadRequest)
+                        .bodyFromText("Form details was not sent in the request body")
+                        .unwrap()
                     }
                 }
             };
             case (_) {
-                HttpResponse.Builder()
-                    .status_code(Http.Status.NotFound)
-                    .unwrap()
+                res
+                .status_code(Http.Status.NotFound)
+                .unwrap()
             };
         }
     };

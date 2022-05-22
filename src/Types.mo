@@ -15,9 +15,16 @@ module {
         headers : [HeaderField];
     };
 
+    public type StreamingCallbackToken = {
+        key: Text;
+        sha256 : ?Blob;
+        index : Nat;
+        content_encoding: Text;
+    };
+
     public type StreamingStrategy = {
         #Callback : {
-            token : Any;
+            token : StreamingCallbackToken;
             callback : shared () -> async ();
         };
     };
@@ -25,8 +32,8 @@ module {
     public type HttpResponse = {
         status_code: Nat16;
         body: Blob;
-        headers: [(Text, Text)];
-        update: ?Bool;
+        headers: [HeaderField];
+        update: Bool;
         streaming_strategy: ?StreamingStrategy;
     };
 

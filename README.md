@@ -1,57 +1,61 @@
 # HTTP Request Parser
+
 A http request parser for parsing url, search query, headers and form data.
 
 ## Usage
-- Import Module
-```motoko
-    import HttpParser "mo:HttpParser";
-```
+
+This code snippet shows a simple example of how to retrieve data from a request, handle web routing and build a response using this lib.
+
 - Parse incoming http request
--  ex:  retrieving the `name` field from the url query
+- ex: retrieving the `name` field from the url query
+
 ```motoko
-    import Http "mo:http/Http";
     import HttpParser "mo:HttpParser/Parser";
     import HttpResponse "mo:HttpParser/Response";
+
+    // This is an external lib that contains a list of Method types and Status Codes
+    // https://github.com/aviate-labs/http.mo
+    import Http "mo:http/Http";
+
 
     actor {
         public query func http_request(rawReq: Http.Request) : async Http.Response {
 
             let req = HttpParser.parse(rawReq);
-            debugRequestParser(req);
 
             let { url} = req;
             let { path; queryObj } = url;
-            let { Get; Post } = Http.Method;
+
+            let res = HttpResponse.Builder();
 
             switch (req.method, path.original) {
-                case (Get, "/"){
+                case ("GET", "/"){
+                    // Retrieves the 'name' field from the url query
                     let optName = queryObj.get("name");
                     let name = Option.get(optName, "");
                     let form = htmlForm(name);
 
-                    HttpResponse.Builder()
-                        .status_code(200)
-                        .header("Content-Type", "text/html")
-                        .body(Text.encodeUtf8(form))
-                        .unwrap()
+                    res // the status code default to 200
+                    .header("Content-Type", "text/html")
+                    .body(Text.encodeUtf8(form))
+                    .unwrap()
                 };
-                case(Get, "/form"){
-                    HttpResponse.Builder()
-                        .status_code(Http.Status.Found)
-                        .header("Content-Type", "text/html")
-                        .bodyFromText("Redirect to <a href =\"/\"> home page </a>")
-                        .unwrap()
+                case("GET", _ ){
+                    res
+                    .status_code(Http.Status.Found)
+                    .header("Content-Type", "text/html")
+                    .bodyFromText("Redirect to <a href =\"/\"> home page </a>")
+                    .unwrap()
                 };
-                case (Post, "/form"){
-                    HttpResponse.Builder()
-                        .status_code(Http.Status.OK)
-                        .bodyFromText("Your Form has been uploaded successfully!")
-                        .unwrap()
+                case ("POST", "/form"){
+                    res
+                    .bodyFromText("Your Form has been uploaded successfully!")
+                    .unwrap()
                 };
                 case (_) {
-                    HttpResponse.Builder()
-                        .status_code(Http.Status.NotFound)
-                        .unwrap()
+                    res
+                    .status_code(Http.Status.NotFound)
+                    .unwrap()
                 };
             }
         };
