@@ -10,8 +10,8 @@ This code snippet shows a simple example of how to retrieve data from a request,
 - ex: retrieving the `name` field from the url query
 
 ```motoko
-    import HttpParser "mo:HttpParser/Parser";
-    import HttpResponse "mo:HttpParser/Response";
+    import HttpParser "mo:http-parser/Parser";
+    import HttpResponse "mo:http-parser/Response";
 
     // This is an external lib that contains a list of Method types and Status Codes
     // https://github.com/aviate-labs/http.mo
@@ -67,3 +67,6 @@ This code snippet shows a simple example of how to retrieve data from a request,
 ```
 
 Check out the data types [documentation](./docs.md) for supported fields and methods
+// jFor more  Method types and Status Codes hchek out the HTTP types ~rporpo~ repo
+    // https://github.com/aviate-labs/http.mo
+    import Http "mo:http/Http"; 

@@ -2,7 +2,7 @@ let upstream = https://github.com/aviate-labs/package-set/releases/download/v0.1
 
 let Package = { name : Text, version : Text, repo : Text, dependencies : List Text }
 let additions = [
-  { name = "HttpParser"
+  { name = "http-parser"
   , repo = "https://github.com/tomijaga/http-parser.mo"
   , version = "main"
   , dependencies = [ "base", "json", "array", "encoding"  ]
