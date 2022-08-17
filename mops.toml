@@ -1,0 +1,5 @@
+[package]
+name = "http-parser"
+version = "0.1.0"
+description = "A http request parser for parsing url, search query, headers and form data."
+repository = "https://github.com/tomijaga/http-parser.mo"

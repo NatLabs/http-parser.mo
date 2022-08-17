@@ -4,16 +4,17 @@ import Option "mo:base/Option";
 import Text "mo:base/Text";
 
 import F "mo:format";
-import Http "mo:http/Http";
-// import HttpParser "mo:HttpParser"; --uncomment;
 
-import HttpParser "../../src/Parser"; // --del
-import HttpResponse "../../src/Response"; // --del
-import Types "../../src/Types"; // --del
-
+import HttpParser "../../src/Parser"; // import HttpParser "mo:http-parser/Parser";
+import HttpResponse "../../src/Response"; // import HttpParser "mo:http-parser/Response
+import HttpTypes "../../src/Types"; // import HttpParser "mo:http-parser/Types
 
 actor {
-    public query func http_request(rawReq: Types.HttpRequest) : async Types.HttpResponse {
+    func greet(name: Text): Text{
+        "Hello, " # name  # "! "
+    };
+
+    public query func http_request(rawReq: HttpTypes.HttpRequest) : async HttpTypes.HttpResponse {
 
         let req = HttpParser.parse(rawReq);
         debugRequestParser(req);
@@ -22,64 +23,46 @@ actor {
         let { path; queryObj } = url;
 
         let res = HttpResponse.Builder();
-        
+        let html = res 
+            .header("Content-Type", "text/html");
+
         switch (req.method, path.original) {
-            case ("GET", "/") {
+            case ("GET", "/"){
+                // Retrieves the 'name' field from the url query
                 let optName = queryObj.get("name");
-                let name = unwrapText(optName);
+                let name = Option.get(optName, "");
                 let form = htmlForm(name);
-                
-                res // defaults to status code 200
+
+                res // the status code default to 200
                 .header("Content-Type", "text/html")
                 .body(Text.encodeUtf8(form))
-                .unwrap()
+                .build()
             };
-            case("GET", _ ) {
+            case("GET", _ ){
                 res
                 .status_code(Http.Status.Found)
                 .header("Content-Type", "text/html")
                 .bodyFromText("Redirect to <a href =\"/\"> home page </a>")
-                .unwrap()
+                .build()
             };
             case ("POST", "/form"){
-                switch (req.body){
-                    case (?body){
-                        let {form} = body;
-
-                        let firstname = Option.get(form.get("firstname"), [""]);
-                        let lastname = Option.get(form.get("lastname"), [""]);
-
-                        res
-                        .bodyFromText(
-                            "Congratulations " # firstname[0] # " " # lastname[0] # ", you completed the form!"
-                        )
-                        .unwrap()
-                    };
-                    case (_){
-                        res
-                        .status_code(Http.Status.BadRequest)
-                        .bodyFromText("Form details was not sent in the request body")
-                        .unwrap()
-                    }
-                }
+                res
+                .bodyFromText("Congratulations, you completed the form!")
+                .build()
             };
             case (_) {
                 res
                 .status_code(Http.Status.NotFound)
-                .unwrap()
+                .build()
             };
         }
     };
 
-    func unwrapText(optText: ?Text):Text{
-        Option.get(optText, "")
+    func htmlPage(name: Text): Text{
+        "<html><head><title> http_request </title></head><body><h1>" # greet(name) # "</h1><br><form \"multipart/form-data\" action=\".\" >\n    <div><label for=\"fname\">First Name</label>\n    <input type=\"text\" id=\"fname\" name=\"firstname\" placeholder=\"Your name..\"></div>\n\n    <div><label for=\"lname\">Last Name</label>\n    <input type=\"text\" id=\"lname\" name=\"lastname\" placeholder=\"Your last name..\"></div>\n\n    <div><label for=\"country\">Country</label>\n    <select id=\"country\" name=\"country\">\n      <option value=\"australia\">Australia</option>\n      <option value=\"canada\">Canada</option>\n      <option value=\"usa\">USA</option>\n    </select></div>\n\n  <div><label for=\"files\">Files</label>\n <input id=\"files\" multiple type=\"file\" > \n  <input  type=\"submit\" value=\"Submit\"></div>\n  </form>\n <script>\nconst form = document.querySelector(\"form\")\n const handleSubmit = (e)=>{\n e.preventDefault() \nvar input = document.querySelector(\'input[type=\"file\"]\')\n\nvar data = new FormData(form)\ndata.append(\'file\', input.files[0])\ndata.append(\'file\', input.files[1])\ndata.append(\'duplicate-field\', \"value1\")\ndata.append(\'duplicate-field\', \"value3\")\ndata.append(\'Duplicate-field\', \"value2\")\n\nfetch(\'.\', {\n  method: \'POST\',\nheaders:{\n    \"duplicate-header\":\"john\",\n    \"Duplicate-Header\":\"fred\",\n},\n  body: data\n}).then(res=>res.text())\n\n}\n form.addEventListener(\"submit\", handleSubmit)</script></body></html>\n"
     };
 
-    func htmlForm(name: Text): Text{
-        "<html><head><title> http_request </title></head><body><h1> Hello, " # name # "! </h1><br><form \"multipart/form-data\" method = \"post\" action=\"/form\" >\n    <div><label for=\"firstname\">First Name</label>\n    <input type=\"text\" id=\"firstname\" name=\"firstname\" placeholder=\"Your name..\"></div>\n\n    <div><label for=\"lastname\">Last Name</label>\n    <input type=\"text\" id=\"lastname\" name=\"lastname\" placeholder=\"Your last name..\"></div>\n\n    <div><label for=\"country\">Country</label>\n    <select id=\"country\" name=\"country\">\n      <option value=\"australia\">Australia</option>\n      <option value=\"canada\">Canada</option>\n      <option value=\"usa\">USA</option>\n    </select></div>\n\n  <div><label for=\"files\">Files</label>\n <input id=\"files\" multiple type=\"file\" > \n  <input  type=\"submit\" value=\"Submit\"></div>\n  </form>\n <script>\nconst form = document.querySelector(\"form\")\n const handleSubmit = (e)=>{\n  \nvar input = document.querySelector(\'input[type=\"file\"]\')\n\nvar data = new FormData(form)\ndata.append(\'file\', input.files[0])\ndata.append(\'file\', input.files[1])\ndata.append(\'duplicate-field\', \"value1\")\ndata.append(\'duplicate-field\', \"value3\")\ndata.append(\'Duplicate-field\', \"value2\")\n\nfetch(\'.\', {\n  method: \'POST\',\nheaders:{\n    \"duplicate-header\":\"john\",\n    \"Duplicate-Header\":\"fred\",\n},\n  body: data\n}).then(res=>res.text())\n\n}\n form.addEventListener(\"submit\", handleSubmit)</script></body></html>\n";
-    };
-
-     func debugRequestParser(req: HttpParser.ParsedHttpRequest ): (){
+    func debugRequestParser(req: HttpParser.ParsedHttpRequest ): (){
         Debug.print(F.format("Method ({})", [#text(req.method)]));
         Debug.print("\n");
 

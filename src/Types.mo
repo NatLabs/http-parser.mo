@@ -112,12 +112,4 @@ module {
         headers: Headers;
         body: ?Body;
     };      
-
-    // internal types
-    public type FormDataType = {
-        #urlencoded: ();
-
-        // takes the boundary as an optional parameter
-        #multipart: ?Text;
-    };
 }

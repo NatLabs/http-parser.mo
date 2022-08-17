@@ -26,7 +26,14 @@ module HttpRequestParser {
     public type ParsedHttpRequest = Types.ParsedHttpRequest;
 
     public type File = Types.File;
-    public type FormDataType = Types.FormDataType;
+
+    // internal types
+    type FormDataType = {
+        #urlencoded: ();
+
+        // takes the boundary as an optional parameter
+        #multipart: ?Text;
+    };
 
     func defaultPort(protocol: Text): Nat16{
         if (protocol == "http"){80} else{443}

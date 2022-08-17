@@ -15,7 +15,7 @@ This code snippet shows a simple example of how to retrieve data from a request,
 
     // This is an external lib that contains a list of Method types and Status Codes
     // https://github.com/aviate-labs/http.mo
-    import Http "mo:http/Http";
+    import Http "mo:http/Http"; 
 
 
     actor {
@@ -38,24 +38,24 @@ This code snippet shows a simple example of how to retrieve data from a request,
                     res // the status code default to 200
                     .header("Content-Type", "text/html")
                     .body(Text.encodeUtf8(form))
-                    .unwrap()
+                    .build()
                 };
                 case("GET", _ ){
                     res
                     .status_code(Http.Status.Found)
                     .header("Content-Type", "text/html")
                     .bodyFromText("Redirect to <a href =\"/\"> home page </a>")
-                    .unwrap()
+                    .build()
                 };
                 case ("POST", "/form"){
                     res
                     .bodyFromText("Congratulations, you completed the form!")
-                    .unwrap()
+                    .build()
                 };
                 case (_) {
                     res
                     .status_code(Http.Status.NotFound)
-                    .unwrap()
+                    .build()
                 };
             }
         };

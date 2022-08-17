@@ -22,7 +22,7 @@ module{
         streaming_strategy: (?StreamingStrategy) -> ResponseFunctor;
         enable_streaming: (token : StreamingCallbackToken, callback : shared () -> async ()) -> ResponseFunctor;
         disable_streaming: () -> ResponseFunctor;
-        unwrap: () -> HttpResponse;
+        build: () -> HttpResponse;
     };
 
     type ResponseBuildType = {
@@ -109,8 +109,7 @@ module{
                     body = response.body;
                     update = response.update;
                     streaming_strategy = ?#Callback{
-                        token = token;
-                        callback = callback;
+                        token; callback;
                     };
                 })
             };
@@ -125,7 +124,7 @@ module{
                 })
             };
 
-            public func unwrap(): HttpResponse{
+            public func build(): HttpResponse{
                 {
                     status_code = response.status_code;
                     headers = Iter.toArray(response.headers.entries());
