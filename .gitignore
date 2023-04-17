@@ -16,6 +16,7 @@ dist/
 
 .history
 .vessel
+.mops
 
 /dfx.json
 

@@ -1,0 +1,6 @@
+[dependencies]
+base = "0.8.6"
+json = "https://github.com/aviate-labs/json.mo#v0.1.0"
+array = "https://github.com/aviate-labs/array.mo#v0.2.1"
+encoding = "https://github.com/aviate-labs/encoding.mo#v0.3.1"
+format = "https://github.com/tomijaga/format.mo#main"

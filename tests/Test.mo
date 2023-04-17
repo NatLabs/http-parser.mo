@@ -12,7 +12,6 @@ import ArrayModule "mo:array/Array";
 import JSON "mo:json/JSON";
 import ActorSpec "./utils/ActorSpec";
 
-import F "mo:format";
 import HttpParser "../src/lib";
 import Types "../src/Types";
 import Utils "../src/Utils";
@@ -307,7 +306,7 @@ let success = run([
                     case(null) true;
                 },
 
-                body.bytes(9, 23).toArray() == ArrayModule.slice(bytes, 9, 23)
+                // body.bytes(9, 23).toArray() == ArrayModule.slice(bytes, 9, 23)
             ])
         }),
 

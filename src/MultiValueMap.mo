@@ -56,7 +56,7 @@ module {
         func optBufferToArray(optionalBuffer: ?Buffer.Buffer<V>):?[V]{
             switch(optionalBuffer){
                 case(?buffer){
-                    ?buffer.toArray();
+                    ?Buffer.toArray(buffer);
                 };
                 case(_){
                     null;
@@ -85,7 +85,7 @@ module {
                 public func next(): ?(K, [V]){
                    switch (iter.next()){
                        case (?(key, buffer)){
-                           ?(key, buffer.toArray())
+                           ?(key, Buffer.toArray(buffer))
                        };
                        case (_){
                            null

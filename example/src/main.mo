@@ -13,9 +13,6 @@ actor {
         "Hello, " # name  # "! "
     };
 
-
-
-
     public query func http_request(rawReq: HttpParser.HttpRequest) : async HttpParser.HttpResponse {
 
         let req = HttpParser.parse(rawReq);
