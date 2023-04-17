@@ -4,17 +4,12 @@ import Option "mo:base/Option";
 import Text "mo:base/Text";
 
 import F "mo:format";
-
-// import HttpParser "mo:HttpParser"; --uncomment;
-import HttpParser "../../src"; // --del
+import HttpParser "mo:http-parser";
 
 actor {
     func greet(name: Text): Text{
         "Hello, " # name  # "! "
     };
-
-
-
 
     public query func http_request(rawReq: HttpParser.HttpRequest) : async HttpParser.HttpResponse {
 
