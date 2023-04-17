@@ -2,6 +2,11 @@
 
 A http request parser for parsing url, search query, headers and form data.
 
+## Installation with [mops](https://mops.one/docs/install)
+```
+mops add https://github.com/NatLabs/http-parser.mo#v0.1.1
+```
+
 ## Usage
 
 - Import Module
