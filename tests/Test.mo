@@ -72,16 +72,10 @@ func isJsonStrictEqual(v1: JSON.JSON, v2: JSON.JSON): Bool{
                 return false;
             };
 
-            for (key in map1.keys()){
-
-                switch(map1.get(key), map2.get(key)){
-                    case(?val1, ?val2){
-                        if (not isJsonStrictEqual(val1, val2)){
-                            return false;
-                        };
-                    };
-                    case(_, _) return false;
-                };
+            for (((k1, v1), (k2, v2)) in zipIter(map1.vals(), map2.vals())){
+                if (k1 != k2 or not isJsonStrictEqual(v1, v2)){
+                    return false;
+                }
             };
 
             return true;
@@ -240,25 +234,15 @@ let success = run([
             
             let jsonResult = isJsonStrictEqual(
                 Option.get(body.deserialize(), #Null),
-                #Object(HashMap.fromIter<Text,JSON>(
-                    Iter.fromArray<(Text, JSON)>([
-                        ("window", #Object(HashMap.fromIter<Text,JSON>(
-                            Iter.fromArray<(Text, JSON)>([
-                                ("title", #String("Internet Computer Game")),
-                                ("name", #String("Dfinity Wars")),
-                                ("width", #Number(500)),
-                                ("height", #Number(500)),
-                            ]), 
-                            0,
-                            Text.equal,
-                            Text.hash
-                        )))
-                    ]), 
-                    0,
-                    Text.equal,
-                    Text.hash
-                )
-            ));
+                #Object([
+                    ("window", #Object([
+                        ("title", #String("Internet Computer Game")),
+                        ("name", #String("Dfinity Wars")),
+                        ("width", #Number(500)),
+                        ("height", #Number(500)),
+                    ]))
+                ])
+            );
 
             assertAllTrue([
                 body.original == jsonBlob,

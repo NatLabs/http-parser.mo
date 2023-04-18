@@ -243,7 +243,7 @@ module HttpRequestParser {
         };
 
         public func deserialize(): ?JSON.JSON{
-            JSON.Parser().parse(text())
+            JSON.parse(text())
         };
 
         let formType: ?FormDataType = switch(contentType){

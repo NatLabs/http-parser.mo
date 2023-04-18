@@ -7,8 +7,18 @@ let additions = [
   , version = "moc-0.7.3"
   , dependencies = [] : List Text
   },
+  { name = "base-0.7.3"
+  , repo = "https://github.com/dfinity/motoko-base"
+  , version = "moc-0.7.3"
+  , dependencies = [] : List Text
+  },
   { name = "array"
   , repo = "https://github.com/aviate-labs/array.mo"
+  , version = "v0.2.1"
+  , dependencies = [ "base" ]
+  },
+  { name = "json"
+  , repo = "https://github.com/aviate-labs/json.mo"
   , version = "v0.2.1"
   , dependencies = [ "base" ]
   },
