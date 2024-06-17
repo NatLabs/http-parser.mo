@@ -2,6 +2,12 @@
 
 A http request parser for parsing url, search query, headers and form data.
 
+## Installation with [mops](https://mops.one/docs/install)
+
+```
+mops add http-parser
+```
+
 ## Usage
 
 - Import Module
@@ -46,23 +52,5 @@ A http request parser for parsing url, search query, headers and form data.
     };
 
 ```
-
-### benchmarks
-
-HttpParser library
-
-Benchmarking the performance with 10k calls
-
-Instructions
-
-|            |    parseForm() | parseForm() v2 |
-| :--------- | -------------: | -------------: |
-| HttpParser | 20_024_766_223 |  3_718_491_568 |
-
-Heap
-
-|            | parseForm() | parseForm() v2 |
-| :--------- | ----------: | -------------: |
-| HttpParser |     410_064 |     19_004_464 |
 
 Check out the data types [documentation](./docs.md) for supported fields and methods
