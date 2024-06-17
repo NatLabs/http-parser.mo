@@ -1,6 +1,15 @@
+[package]
+name = "http-parser"
+version = "0.2.0"
+description = "A http request parser for parsing url, search query, headers and form data."
+repository = "https://github.com/NatLabs/http-parser.mo"
+
 [dependencies]
 base = "0.8.6"
 json = "https://github.com/aviate-labs/json.mo#v0.1.0"
-array = "https://github.com/aviate-labs/array.mo#v0.2.1"
 encoding = "https://github.com/aviate-labs/encoding.mo#v0.3.1"
 format = "https://github.com/tomijaga/format.mo#main"
+
+[dev-dependencies]
+bench = "1.0.0"
+array = "https://github.com/aviate-labs/array.mo#v0.2.1"

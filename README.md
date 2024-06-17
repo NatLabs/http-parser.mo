@@ -7,7 +7,7 @@ A http request parser for parsing url, search query, headers and form data.
 - Import Module
 
 ```motoko
-    import HttpParser "mo:HttpParser";
+    import HttpParser "mo:http-parser";
 ```
 
 - Parse incoming http request
@@ -46,5 +46,23 @@ A http request parser for parsing url, search query, headers and form data.
     };
 
 ```
+
+### benchmarks
+
+HttpParser library
+
+Benchmarking the performance with 10k calls
+
+Instructions
+
+|            |    parseForm() | parseForm() v2 |
+| :--------- | -------------: | -------------: |
+| HttpParser | 20_024_766_223 |  3_718_491_568 |
+
+Heap
+
+|            | parseForm() | parseForm() v2 |
+| :--------- | ----------: | -------------: |
+| HttpParser |     410_064 |     19_004_464 |
 
 Check out the data types [documentation](./docs.md) for supported fields and methods

@@ -1,6 +1,7 @@
-import ArrayModule "mo:array/Array";
 import Blob "mo:base/Blob";
+import Buffer "mo:base/Buffer";
 import Char "mo:base/Char";
+import Debug "mo:base/Debug";
 import Iter "mo:base/Iter";
 import MultiValueMap "MultiValueMap";
 import Nat "mo:base/Bool";
@@ -11,6 +12,8 @@ import Utils "Utils";
 
 module {
 
+    type Buffer<A> = Buffer.Buffer<A>;
+
     type File = T.File;
     type ParsingError = {
         #MissingExitBoundary;
@@ -20,87 +23,142 @@ module {
         #UTF8DecodeError;
     };
 
-    func plainTextIter (blobArray: [Nat8]): Iter.Iter<Char> {
-        var i =0;
-        return object{
-            public func next ():?Char {
-                if (i == blobArray.size()) return null;
+    let NEWLINE : Nat8 = 10;
+    let CARRIAGE_RETURN : Nat8 = 13;
+    let DASH : Nat8 = 45;
 
-                let val = blobArray[i];
-                i+=1;
-
-                return ?Utils.nat8ToChar(val);
-            };
-
-            public func skip (){
-                i+=1;
-            };
-        };
-    };
-
-    func trimQuotesAndSpaces(text:Text):Text{
-        Utils.trimQuotes(Utils.trimSpaces((text)))
+    func trimQuotesAndSpaces(text : Text) : Text {
+        Utils.trimQuotes(Utils.trimSpaces((text)));
     };
 
     // Format
     // Content-Disposition: form-data; name="myFile"; filename="test.txt"
-    func parseContentDisposition(line: Text): (Text, Text) {
+    func parseContentDisposition(buffer : Buffer<Nat8>) : (Text, Text) {
+        var line = "";
+
+        var i = 25;
+        while (i < buffer.size()) {
+            line #= Char.toText(Utils.nat8ToChar(buffer.get(i)));
+            i += 1;
+        };
+
         let splitTextArr = Iter.toArray(Text.tokens(line, #char ';'));
         let n = splitTextArr.size();
-        var name  = "";
-        if (n > 1){
+        var name = "";
+        if (n > 1) {
             let arr = Iter.toArray(Text.split(splitTextArr[1], #text("name=")));
-            if (arr.size()== 2){
-                name:= trimQuotesAndSpaces(arr[1]);
-            }; 
+            if (arr.size() == 2) {
+                name := trimQuotesAndSpaces(arr[1]);
+            };
         };
 
         var filename = "";
-        if (n > 2){
+        if (n > 2) {
             let arr = Iter.toArray(Text.split(splitTextArr[2], #text("filename=")));
-            if (arr.size() == 2){
-                filename:= trimQuotesAndSpaces(arr[1]);
-            }; 
+            if (arr.size() == 2) {
+                filename := trimQuotesAndSpaces(arr[1]);
+            };
         };
-        (name, filename)
+
+        (name, filename);
     };
 
     // Format
     // Content-Type: text/plain
-    func parseContentType(line: Text): (Text, Text){
+    func parseContentType(buffer : Buffer<Nat8>) : (Text, Text) {
+        var line = "";
+
+        var i = 20;
+        while (i < buffer.size()) {
+            line #= Char.toText(Utils.nat8ToChar(buffer.get(i)));
+            i += 1;
+        };
+
         let arr = Iter.toArray(Text.tokens(line, #char ':'));
 
-        return if (arr.size() > 1){
-            let mime = Iter.toArray(Text.tokens( trimQuotesAndSpaces(arr[1]), #char '/'));
+        return if (arr.size() > 1) {
+            let mime = Iter.toArray(Text.tokens(trimQuotesAndSpaces(arr[1]), #char '/'));
             let mimeType = mime[0];
-            let mimeSubType = if (mime.size() > 1 ){
+            let mimeSubType = if (mime.size() > 1) {
                 mime[1];
-            } else {""};
+            } else { "" };
 
-            (mimeType, mimeSubType)
-        }else{
-            ("", "")
-        };
+            (mimeType, mimeSubType);
+        } else { ("", "") };
     };
 
-    public func parse(blob: Blob, _boundary:?Text): Result.Result<T.FormObjType, ParsingError> {
+    func startsWith(a : Buffer<Nat8>, b : Buffer<Nat8>) : Bool {
+        if (a.size() < b.size()) return false;
+
+        var i = 0;
+
+        while (i < b.size()) {
+            if (a.get(i) != b.get(i)) return false;
+            i += 1;
+        };
+
+        return true;
+    };
+
+    func equals(a : Buffer<Nat8>, b : Buffer<Nat8>) : Bool {
+        if (a.size() != b.size()) return false;
+
+        var i = 0;
+
+        while (i < a.size()) {
+            if (a.get(i) != b.get(i)) return false;
+            i += 1;
+        };
+
+        return true;
+    };
+
+    func trimEOL(buffer : Buffer<Nat8>) {
+        let n = buffer.size();
+        if (n == 0) return;
+
+        var i = n;
+
+        while (i > 0 and (buffer.get(i - 1) == NEWLINE or buffer.get(i - 1) == CARRIAGE_RETURN)) {
+            ignore buffer.removeLast();
+            i -= 1;
+        };
+
+    };
+
+    public func parse(blob : Blob, _boundary : ?Text) : Result.Result<T.FormObjType, ParsingError> {
         let blobArray = Blob.toArray(blob);
-        let chars = plainTextIter(blobArray);
 
         let filesMVMap = MultiValueMap.MultiValueMap<Text, File>(Text.equal, Text.hash);
         let fields = MultiValueMap.MultiValueMap<Text, Text>(Text.equal, Text.hash);
 
-        let delim = "--";
-        var boundary = switch(_boundary){
-            case (?bound) delim # bound ;
-            case (_) "";
-        };
-        var exitBoundary = if (boundary != "") {boundary # delim} else {""};
+        let delim = Buffer.fromArray<Nat8>([DASH, DASH]);
 
-        var line="";
+        let boundary = switch (_boundary) {
+            case (?bound) {
+                let b = Buffer.clone(delim);
+                for (c in bound.chars()) {
+                    let n8 = Utils.charToNat8(c);
+                    b.add(n8);
+                };
+                b;
+            };
+            case (_) Buffer.Buffer<Nat8>(32);
+        };
+
+        let exitBoundary = if (boundary.size() != 0) {
+            let b = Buffer.clone(boundary);
+            b.add(DASH);
+            b.add(DASH);
+            b;
+        } else { Buffer.Buffer<Nat8>(32) };
+
+        let line = Buffer.Buffer<Nat8>(100);
+
+        let content_disposition = Buffer.fromArray<Nat8>([0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2d, 0x44, 0x69, 0x73, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x3a]);
+        let content_type = Buffer.fromArray<Nat8>([0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2d, 0x54, 0x79, 0x70, 0x65, 0x3a]);
 
         var lineIndexFromBoundary = 0;
-        var contentType = "";
         var includesContentType = false;
         var canConcat = true;
 
@@ -111,116 +169,120 @@ module {
         var mimeSubType = "";
 
         var start = 0;
-        var end  = 0;
+        var end = 0;
 
         var prevLineEnd = 0;
         var is_EOL_LF_CR = false;
-        
-        let textIter = Utils.enumerate<Char>(chars);
 
-        label l for ((i, char) in textIter){
+        var i = 0;
+        var j = 0;
 
-            let isIndexBeforeContent =  lineIndexFromBoundary >= 0 and lineIndexFromBoundary <= 2;
+        label l while (j < blobArray.size()) {
+            i := j;
+            j += 1;
 
-            let newLine = line # Char.toText(char);
-            let isBoundary = Text.startsWith(boundary, #text(newLine));
-            let isExitBoundary = (newLine ==( boundary #"-")) or (newLine == exitBoundary);
+            let char : Nat8 = blobArray[i];
+            let isIndexBeforeContent = lineIndexFromBoundary >= 0 and lineIndexFromBoundary <= 2;
 
-            let store = isIndexBeforeContent or isBoundary or isExitBoundary; 
+            line.add(char);
+            let isBoundary = startsWith(boundary, line);
+            let isExitBoundary = equals(line, exitBoundary);
 
-            if ( canConcat and store){
-                line := Utils.trimEOL(newLine);
-            }else{
+            let store = isIndexBeforeContent or isBoundary or isExitBoundary;
+
+            if (canConcat and store) {
+                trimEOL(line);
+            } else {
+                ignore line.removeLast();
                 canConcat := false;
             };
 
-            if (char == '\n' or char == '\r' or line == exitBoundary){ 
+            if (char == NEWLINE or char == CARRIAGE_RETURN or equals(line, exitBoundary)) {
 
                 // skips the next char if EOL == '\r\n'
-                if (char == '\r' and Utils.nat8ToChar(blobArray[i+1]) == '\n'){
-                    if (is_EOL_LF_CR == false){ 
-                        is_EOL_LF_CR := true; 
+                if (char == CARRIAGE_RETURN and blobArray[i +1] == NEWLINE) {
+                    if (is_EOL_LF_CR == false) {
+                        is_EOL_LF_CR := true;
                     };
-                    
-                    ignore textIter.next();
+
+                    j += 1;
                 };
 
                 // Get's the boundary from the first line if it wasn't specified
-                if (lineIndexFromBoundary == 0){
-                    if (boundary == ""){
-                        if (Text.startsWith(line, #text(delim))){
-                            boundary:= line;
-                            exitBoundary:=boundary # delim;
-                        }else{
+                if (lineIndexFromBoundary == 0) {
+                    if (boundary.size() == 0) {
+                        if (startsWith(line, delim)) {
+                            boundary.append(line);
+
+                            exitBoundary.append(boundary);
+                            exitBoundary.append(delim);
+                        } else {
                             return #err(#BoundaryNotDetected);
                         };
-                    }else{
-                        if (boundary != line){
+                    } else {
+                        if (not equals(boundary, line)) {
                             return #err(#IncorrectBoundary);
                         };
                     };
                 };
 
-                if (lineIndexFromBoundary == 1){
-                    if (Text.startsWith(line, #text "Content-Disposition:")){
+                if (lineIndexFromBoundary == 1) {
+
+                    if (startsWith(line, content_disposition)) {
                         let (_name, _filename) = parseContentDisposition(line);
-                        name:= _name;
+                        name := _name;
                         filename := _filename;
-                    }else{
+                    } else {
                         return #err(#MissingContentName);
                     };
                 };
 
-                if (lineIndexFromBoundary == 2){
-                    if (Text.startsWith(line, #text "Content-Type:")){
+                if (lineIndexFromBoundary == 2) {
+                    if (startsWith(line, content_type)) {
                         let (_mimeType, _mimeSubType) = parseContentType(line);
-                        mimeType:= _mimeType;
-                        mimeSubType:=_mimeSubType;
+                        mimeType := _mimeType;
+                        mimeSubType := _mimeSubType;
 
                         includesContentType := true;
                     };
                 };
 
-                if (lineIndexFromBoundary == 3 or lineIndexFromBoundary == 4){
-                    if ((not includesContentType) and start == 0){
-                        start := prevLineEnd  + (if (is_EOL_LF_CR) {2} else {1});
+                if (lineIndexFromBoundary == 3 or lineIndexFromBoundary == 4) {
+                    if ((not includesContentType) and start == 0) {
+                        start := prevLineEnd + (if (is_EOL_LF_CR) { 2 } else { 1 });
                     };
-                    includesContentType:= false;
+                    includesContentType := false;
                 };
 
-                if (lineIndexFromBoundary > 1  and (line  == boundary or line  == exitBoundary)){
-                    end:= prevLineEnd;
+                if (lineIndexFromBoundary > 1 and (equals(line, boundary) or equals(line, exitBoundary))) {
+                    end := prevLineEnd;
 
                     // If the field has a filename, add it to files
                     // if it doesn't, add it to fields
-                    if (filename != ""){
-                        filesMVMap.add(name, {
-                            name = name;
-                            filename = filename;
+                    if (filename != "") {
+                        filesMVMap.add(
+                            name,
+                            {
+                                name = name;
+                                filename = filename;
 
-                            mimeType = mimeType;
-                            mimeSubType = mimeSubType;
+                                mimeType = mimeType;
+                                mimeSubType = mimeSubType;
 
-                            start = start;
-                            end = end;
-                            bytes = Utils.arraySliceToBuffer<Nat8>(blobArray, start, end);
-                        });
-                    }else{
-                        let bytes = ArrayModule.slice(blobArray, start, end);
-                        let value = Utils.bytesToText(bytes);
-
-                        switch(value){
-                            case(?val) {
-                                fields.add(name, val);
-                            };
-                            case(_) return #err(#UTF8DecodeError);
-                        };
+                                start = start;
+                                end = end;
+                                bytes = Utils.arraySliceToBuffer<Nat8>(blobArray, start, end);
+                            },
+                        );
+                    } else {
+                        let value = Utils.arraySliceToText(blobArray, start, end);
+                        fields.add(name, value);
                     };
 
                     lineIndexFromBoundary := 0;
 
                     name := "";
-                    filename:="";
+                    filename := "";
 
                     mimeType := "";
                     mimeSubType := "";
@@ -229,26 +291,28 @@ module {
                     end := 0;
                 };
 
-                if (line  == exitBoundary) {break l};
-               
-                line:= "";
+                if (equals(line, exitBoundary)) { break l };
+
+                line.clear();
                 prevLineEnd := i;
-                lineIndexFromBoundary+=1;
-                canConcat:= true;
+                lineIndexFromBoundary += 1;
+                canConcat := true;
             };
 
         };
-        
-        return #ok(object {
-            public let trieMap = fields.freezeValues();
-            public let keys = Iter.toArray(trieMap.keys());
-            public let get = trieMap.get;
 
-            let filesMap = filesMVMap.freezeValues();
-            public let fileKeys = Iter.toArray(filesMap.keys());
-            public func files (name: Text): ?[File]{
-                filesMap.get(name)
-            };
-        });
+        return #ok(
+            object {
+                public let trieMap = fields.freezeValues();
+                public let keys = Iter.toArray(trieMap.keys());
+                public let get = trieMap.get;
+
+                let filesMap = filesMVMap.freezeValues();
+                public let fileKeys = Iter.toArray(filesMap.keys());
+                public func files(name : Text) : ?[File] {
+                    filesMap.get(name);
+                };
+            }
+        );
     };
-}
+};
