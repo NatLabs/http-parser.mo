@@ -3,8 +3,9 @@
 A http request parser for parsing url, search query, headers and form data.
 
 ## Installation with [mops](https://mops.one/docs/install)
+
 ```
-mops add https://github.com/NatLabs/http-parser.mo#v0.1.1
+mops add http-parser
 ```
 
 ## Usage
@@ -12,7 +13,7 @@ mops add https://github.com/NatLabs/http-parser.mo#v0.1.1
 - Import Module
 
 ```motoko
-    import HttpParser "mo:HttpParser";
+    import HttpParser "mo:http-parser";
 ```
 
 - Parse incoming http request

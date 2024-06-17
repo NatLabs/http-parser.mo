@@ -1,4 +1,0 @@
-[dependencies]
-base = "0.8.6"
-format = "https://github.com/tomijaga/format.mo"
-"http-parser" = "https://github.com/NatLabs/http-parser.mo#main"
