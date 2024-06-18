@@ -1,3 +1,4 @@
+import ArrayModule "mo:array/Array";
 import Blob "mo:base/Blob";
 import Buffer "mo:base/Buffer";
 import Char "mo:base/Char";

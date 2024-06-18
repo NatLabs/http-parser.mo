@@ -77,6 +77,7 @@ module {
 
         while (i < end) {
             text #= Char.toText(nat8ToChar(arr[i]));
+            i += 1;
         };
 
         text;
