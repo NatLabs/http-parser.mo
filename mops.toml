@@ -1,6 +1,6 @@
 [package]
 name = "http-parser"
-version = "0.3.0"
+version = "0.3.1"
 description = "A http request parser for parsing url, search query, headers and form data."
 repository = "https://github.com/NatLabs/http-parser.mo"
 
