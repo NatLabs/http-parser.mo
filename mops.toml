@@ -6,8 +6,8 @@ repository = "https://github.com/NatLabs/http-parser.mo"
 
 [dependencies]
 base = "0.8.6"
-json = "https://github.com/aviate-labs/json.mo#v0.1.0"
-encoding = "https://github.com/aviate-labs/encoding.mo#v0.3.1"
+json = "https://github.com/aviate-labs/json.mo#v0.2.1@afd30ed75095cb339c1ec187d61030bbd2e59ae6"
+encoding = "https://github.com/aviate-labs/encoding.mo#v0.4.1@2711d18727e954b11afc0d37945608512b5fbce2"
 format = "https://github.com/tomijaga/format.mo#main"
 
 [dev-dependencies]
