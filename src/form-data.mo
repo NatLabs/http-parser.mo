@@ -37,7 +37,7 @@ module {
     func parseContentDisposition(buffer : Buffer<Nat8>) : (Text, Text) {
         var line = "";
 
-        var i = 25;
+        var i = 31;
         while (i < buffer.size()) {
             line #= Char.toText(Utils.nat8ToChar(buffer.get(i)));
             i += 1;
@@ -45,22 +45,20 @@ module {
 
         let splitTextArr = Iter.toArray(Text.tokens(line, #char ';'));
         let n = splitTextArr.size();
-        var name = "";
-        if (n > 1) {
-            let arr = Iter.toArray(Text.split(splitTextArr[1], #text("name=")));
-            if (arr.size() == 2) {
-                name := trimQuotesAndSpaces(arr[1]);
-            };
-        };
 
+        var name = "";
+        let arr = Iter.toArray(Text.split(splitTextArr[0], #text("name=")));
+        if (arr.size() == 2) {
+            name := trimQuotesAndSpaces(arr[1]);
+        };
         var filename = "";
-        if (n > 2) {
-            let arr = Iter.toArray(Text.split(splitTextArr[2], #text("filename=")));
+        if (n > 1) {
+            let arr = Iter.toArray(Text.split(splitTextArr[1], #text("filename=")));
             if (arr.size() == 2) {
+
                 filename := trimQuotesAndSpaces(arr[1]);
             };
         };
-
         (name, filename);
     };
 
@@ -69,23 +67,19 @@ module {
     func parseContentType(buffer : Buffer<Nat8>) : (Text, Text) {
         var line = "";
 
-        var i = 20;
+        var i = 13;
         while (i < buffer.size()) {
             line #= Char.toText(Utils.nat8ToChar(buffer.get(i)));
             i += 1;
         };
 
-        let arr = Iter.toArray(Text.tokens(line, #char ':'));
+        let mime = Iter.toArray(Text.tokens(trimQuotesAndSpaces(line), #char '/'));
+        let mimeType = mime[0];
+        let mimeSubType = if (mime.size() > 1) {
+            mime[1];
+        } else { "" };
 
-        return if (arr.size() > 1) {
-            let mime = Iter.toArray(Text.tokens(trimQuotesAndSpaces(arr[1]), #char '/'));
-            let mimeType = mime[0];
-            let mimeSubType = if (mime.size() > 1) {
-                mime[1];
-            } else { "" };
-
-            (mimeType, mimeSubType);
-        } else { ("", "") };
+        (mimeType, mimeSubType);
     };
 
     func startsWith(a : Buffer<Nat8>, b : Buffer<Nat8>) : Bool {
@@ -199,7 +193,6 @@ module {
             };
 
             if (char == NEWLINE or char == CARRIAGE_RETURN or equals(line, exitBoundary)) {
-
                 // skips the next char if EOL == '\r\n'
                 if (char == CARRIAGE_RETURN and blobArray[i +1] == NEWLINE) {
                     if (is_EOL_LF_CR == false) {
@@ -211,6 +204,7 @@ module {
 
                 // Get's the boundary from the first line if it wasn't specified
                 if (lineIndexFromBoundary == 0) {
+
                     if (boundary.size() == 0) {
                         if (startsWith(line, delim)) {
                             boundary.append(line);
@@ -239,6 +233,7 @@ module {
                 };
 
                 if (lineIndexFromBoundary == 2) {
+
                     if (startsWith(line, content_type)) {
                         let (_mimeType, _mimeSubType) = parseContentType(line);
                         mimeType := _mimeType;
@@ -249,6 +244,7 @@ module {
                 };
 
                 if (lineIndexFromBoundary == 3 or lineIndexFromBoundary == 4) {
+
                     if ((not includesContentType) and start == 0) {
                         start := prevLineEnd + (if (is_EOL_LF_CR) { 2 } else { 1 });
                     };
@@ -262,7 +258,7 @@ module {
                     // if it doesn't, add it to fields
                     if (filename != "") {
                         filesMVMap.add(
-                            name,
+                            filename,
                             {
                                 name = name;
                                 filename = filename;

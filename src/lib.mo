@@ -98,7 +98,7 @@ module HttpRequestParser {
         let raw_domain = (Option.get(headers.get("host"), [""]))[0];
 
         var domain = Option.get(Utils.decodeURIComponent(raw_domain), raw_domain);
-        let url = Option.get(Utils.decodeURIComponent(raw_url), raw_url);
+        var url = Option.get(Utils.decodeURIComponent(raw_url), raw_url);
 
         public let original = domain # url;
 
@@ -118,32 +118,30 @@ module HttpRequestParser {
             public let array = Iter.toArray(Text.tokens(_host, #char('.')));
         };
 
-        domain := url;
-
-        let p = Iter.toArray(Text.tokens(domain, #char('#')));
+        let p = Iter.toArray(Text.tokens(url, #char('#')));
 
         public let anchor = if (p.size() > 1) {
-            domain := p[0];
+            url := p[0];
             p[1];
         } else {
-            domain := p[0];
+            url := p[0];
             "";
         };
 
-        let re = Iter.toArray(Text.tokens(domain, #char('?')));
+        let re = Iter.toArray(Text.tokens(url, #char('?')));
 
         let queryString : Text = switch (re.size()) {
             case (0) {
-                domain := "";
+                url := "";
                 re[1];
             };
             case (1) {
-                domain := re[0];
+                url := re[0];
                 "";
             };
 
             case (_) {
-                domain := re[0];
+                url := re[0];
                 re[1];
             };
 
@@ -151,11 +149,12 @@ module HttpRequestParser {
 
         public let queryObj : SearchParams = SearchParams(queryString);
 
-        let path_iter = Text.tokens(domain, #char('/'));
-
         public let path = object {
+            public let original = url;
+
+            let path_iter = Text.split(url, #char('/'));
+            ignore path_iter.next();
             public let array = Iter.toArray(path_iter);
-            public let original = "/" # Text.join("/", Iter.fromArray(array));
         };
 
     };
