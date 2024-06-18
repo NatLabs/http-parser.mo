@@ -1,4 +1,3 @@
-// @testmode wasi
 import Blob "mo:base/Blob";
 import Buffer "mo:base/Buffer";
 import Debug "mo:base/Debug";
@@ -65,21 +64,17 @@ func isJsonStrictEqual(v1 : JSON.JSON, v2 : JSON.JSON) : Bool {
         };
 
         case (#Boolean(bool1), #Boolean(bool2)) bool1 == bool2;
-        case (#Object(map1), #Object(map2)) {
+        case (#Object(obj1), #Object(obj2)) {
 
-            if (map1.size() != map2.size()) {
+            if (obj1.size() != obj2.size()) {
                 return false;
             };
 
-            for (key in map1.keys()) {
-
-                switch (map1.get(key), map2.get(key)) {
-                    case (?val1, ?val2) {
-                        if (not isJsonStrictEqual(val1, val2)) {
-                            return false;
-                        };
+            for ((key1, val1) in obj1.vals()) {
+                for ((key2, val2) in obj2.vals()) {
+                    if (key1 == key2) if (not isJsonStrictEqual(val1, val2)) {
+                        return false;
                     };
-                    case (_, _) return false;
                 };
             };
 
@@ -283,29 +278,15 @@ let success = run([
 
                             let jsonResult = isJsonStrictEqual(
                                 Option.get(body.deserialize(), #Null),
-                                #Object(
-                                    HashMap.fromIter<Text, JSON>(
-                                        Iter.fromArray<(Text, JSON)>([(
-                                            "window",
-                                            #Object(
-                                                HashMap.fromIter<Text, JSON>(
-                                                    Iter.fromArray<(Text, JSON)>([
-                                                        ("title", #String("Internet Computer Game")),
-                                                        ("name", #String("Dfinity Wars")),
-                                                        ("width", #Number(500)),
-                                                        ("height", #Number(500)),
-                                                    ]),
-                                                    0,
-                                                    Text.equal,
-                                                    Text.hash,
-                                                )
-                                            ),
-                                        )]),
-                                        0,
-                                        Text.equal,
-                                        Text.hash,
-                                    )
-                                ),
+                                #Object([(
+                                    "window",
+                                    #Object([
+                                        ("title", #String("Internet Computer Game")),
+                                        ("name", #String("Dfinity Wars")),
+                                        ("width", #Number(500)),
+                                        ("height", #Number(500)),
+                                    ]),
+                                )]),
                             );
 
                             assertAllTrue([
