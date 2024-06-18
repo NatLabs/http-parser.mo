@@ -111,8 +111,8 @@ let success = run([
                                 host.original == "m7sm4-2iaaa-aaaab-qabra-cai.raw.ic0.app",
                                 host.array == ["m7sm4-2iaaa-aaaab-qabra-cai", "raw", "ic0", "app"],
 
-                                path.original == "/counter",
-                                path.array == ["counter"],
+                                path.original == "/counter/",
+                                path.array == ["counter", ""],
 
                                 queryObj.original == "tag=2526172523",
                                 queryObj.keys == ["tag"],
@@ -356,7 +356,7 @@ let success = run([
                                     case (null) true;
                                 },
 
-                                // body.bytes(9, 23).toArray() == ArrayModule.slice(bytes, 9, 23)
+                                body.bytes(9, 23).toArray() == ArrayModule.slice(bytes, 9, 23)
                             ]);
                         },
                     ),
@@ -385,30 +385,6 @@ let success = run([
                             let body = HttpParser.Body(blob, ?"multipart/form-data");
                             let { form } = body;
 
-                            Debug.print(debug_show ("original", body.original));
-                            Debug.print(debug_show ("size", body.size, blob.size()));
-                            Debug.print(debug_show ("text", body.text()));
-                            Debug.print(debug_show ("form.keys", form.keys));
-                            Debug.print(debug_show ("form.get(\"field1\")", form.get("field1")));
-                            Debug.print(debug_show ("form.fileKeys", form.fileKeys));
-                            Debug.print(
-                                debug_show (
-                                    "form.files(\"field2\")",
-                                    switch (form.files("field2")) {
-                                        case (?arr) ?(
-                                            arr[0].name,
-                                            arr[0].filename,
-                                            arr[0].mimeType,
-                                            arr[0].mimeSubType,
-                                            arr[0].start,
-                                            arr[0].end,
-                                            (arr[0].bytes.toArray(), Text.decodeUtf8(Blob.fromArray(arr[0].bytes.toArray()))),
-                                            (Utils.textToBytes("value2"), "value2"),
-                                        );
-                                        case (_) null;
-                                    },
-                                )
-                            );
                             assertAllTrue([
                                 body.original == blob,
                                 body.size == blob.size(),
@@ -417,30 +393,25 @@ let success = run([
                                 form.keys == ["field1"],
                                 form.get("field1") == ?["value1"],
 
-                                form.fileKeys == ["field2"],
+                                form.fileKeys == ["example.txt"],
 
-                                // switch (form.files("field2")) {
-                                //     case (?arr) {
-                                //         let file = arr[0];
+                                switch (form.files("example.txt")) {
+                                    case (?arr) {
+                                        let file = arr[0];
 
-                                //         assertAllTrue([
-                                //             file.name == "field2",
-                                //             file.filename == "example.txt",
-
-                                //             file.mimeType == "text",
-                                //             file.mimeSubType == "plain",
-
-                                //             file.start == 172,
-                                //             file.end == 178,
-
-                                //             file.bytes.toArray() == Utils.textToBytes("value2"),
-                                //             file.bytes.toArray() == ArrayModule.slice(blobArray, 172, 178)
-
-                                //         ]);
-                                //     };
-
-                                //     case (_) false;
-                                // },
+                                        assertAllTrue([
+                                            file.name == "field2",
+                                            file.filename == "example.txt",
+                                            file.mimeType == "text",
+                                            file.mimeSubType == "plain",
+                                            file.start == 172,
+                                            file.end == 178,
+                                            file.bytes.toArray() == Utils.textToBytes("value2"),
+                                            file.bytes.toArray() == ArrayModule.slice(blobArray, 172, 178)
+                                        ]);
+                                    };
+                                    case (_) false;
+                                },
                             ])
 
                         },

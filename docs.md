@@ -15,7 +15,7 @@
 | `protocol` | always **https** | `Text` |
 | `port` | URL Port. Default to `443` if it's not defined | `Nat16` |
 | `host` | An object with the url host stored as a string and as an array. The array is the result of the string split at every dot.<br/> <br/> ```original = "www.google.com"```<br/> `array =  ["www", "google", "com"]` | `{original: Text; array: [Text]}` |
-| `path` | An object with the url paths stored as a string and as an array. The array is the result of the string split at every backslash. <br/>  <br/> `original = "/categories/items/32"`, <br/>```array = ["categories", "items", "32"] ```| `{original: Text; array: [Text]}` |
+| `path` | An object with the url paths stored as a string and as an array. The array is the result of the string split at every backslash. <br/>  <br/> `original = "/categories/items/32"`, <br/>```array = ["categories", "items", "32"] ``` <br/> <br/> A path with a trailing backslash will have an empty string at the end of `path.array` <br/>  <br/> `original = "/categories/items/"`, <br/>```array = ["categories", "items", ""] ```   | `{original: Text; array: [Text]}` |
 | `queryObj` | An object for accessing fields and values of a query string | [SearchParams](#searchParams) |
 | `anchor` | Everything after the symbol  `#` | `Text` |
 
@@ -52,8 +52,8 @@
 | `get` | Retrieves field values | `(Text) -> ?[Text]` |
 | `keys` | An array of all field keys | `[Text]` |
 | `trieMap` | Stores all field entries (data without a filename) | `TrieMap<Text, [Text]>` |
-| `fileKeys` | An array of all file keys | `[Text]` |
-| `files` | Retrieves files of a specific key/name | `(Text) -> ?[`[File](#file)`]` |
+| `fileKeys` | An array of all filenames | `[Text]` |
+| `files` | Retrieves files associated with a specific filename | `(Text) -> ?[`[File](#file)`]` |
 
 #### File
 | Property | Description | Type |
