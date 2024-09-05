@@ -100,6 +100,13 @@ module HttpRequestParser {
         var domain = Option.get(Utils.decodeURIComponent(raw_domain), raw_domain);
         var url = Option.get(Utils.decodeURIComponent(raw_url), raw_url);
 
+        if (Text.startsWith(url, #text("https://"))) {
+            let splitText = Iter.toArray(Text.tokens(url, #char('/')));
+            domain := splitText[1];
+            url := "/" # splitText[2];
+
+        };
+
         public let original = domain # url;
 
         public let protocol = "https";

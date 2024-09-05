@@ -339,6 +339,8 @@ let success = run([
                                 )
                             );
 
+                            Debug.print(debug_show (form.get("search")));
+
                             assertAllTrue([
                                 body.original == blob,
                                 body.size == blob.size(),
@@ -356,7 +358,7 @@ let success = run([
                                     case (null) true;
                                 },
 
-                                body.bytes(9, 23).toArray() == ArrayModule.slice(bytes, 9, 23)
+                                body.bytes(9, 23).toArray() == ArrayModule.slice(bytes, 9, 23),
                             ]);
                         },
                     ),
@@ -407,7 +409,7 @@ let success = run([
                                             file.start == 172,
                                             file.end == 178,
                                             file.bytes.toArray() == Utils.textToBytes("value2"),
-                                            file.bytes.toArray() == ArrayModule.slice(blobArray, 172, 178)
+                                            file.bytes.toArray() == ArrayModule.slice(blobArray, 172, 178),
                                         ]);
                                     };
                                     case (_) false;

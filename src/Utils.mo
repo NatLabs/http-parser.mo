@@ -1,6 +1,7 @@
 import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Char "mo:base/Char";
+import Debug "mo:base/Debug";
 import Buffer "mo:base/Buffer";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
@@ -185,20 +186,29 @@ module {
     public func decodeURIComponent(t : Text) : ?Text {
         let iter = Text.split(t, #char '%');
         var decodedURI = Option.get(iter.next(), "");
+        var accumulated_hex = "";
 
-        for (sp in iter) {
+        label decoding_hex for (sp in iter) {
+            if (sp.size() == 2) {
+                accumulated_hex #= sp;
+                continue decoding_hex;
+            };
+
             let hex = subText(sp, 0, 2);
+            accumulated_hex #= hex;
 
-            switch (Hex.decode(hex)) {
-                case (#ok(symbols)) {
-                    let char = (nat8ToChar(symbols[0]));
-                    decodedURI := decodedURI # Char.toText(char) #
-                    Text.trimStart(sp, #text hex);
+            switch (Hex.decode(accumulated_hex)) {
+                case (#ok(utf8_encoding)) {
+                    let ?decoded_utf8 = Text.decodeUtf8(Blob.fromArray(utf8_encoding)) else return null;
+                    decodedURI := decodedURI # decoded_utf8 # Text.trimStart(sp, #text hex);
+
                 };
                 case (_) {
                     return null;
                 };
             };
+
+            accumulated_hex := "";
 
         };
 
