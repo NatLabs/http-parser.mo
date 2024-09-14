@@ -97,7 +97,7 @@ let success = run([
                         "Test 1: Successfully parse all fields",
                         do {
                             let { url; method } = HttpParser.parse({
-                                url = "/counter/?tag=2526172523#myAnchor";
+                                url = "counter/?tag=2526172523#myAnchor";
                                 headers = [("host", "m7sm4-2iaaa-aaaab-qabra-cai.raw.ic0.app")];
                                 method = "GET";
                                 body = Blob.fromArray([]);
@@ -111,8 +111,8 @@ let success = run([
                                 host.original == "m7sm4-2iaaa-aaaab-qabra-cai.raw.ic0.app",
                                 host.array == ["m7sm4-2iaaa-aaaab-qabra-cai", "raw", "ic0", "app"],
 
-                                path.original == "/counter/",
-                                path.array == ["counter", ""],
+                                path.original == "/counter",
+                                path.array == ["counter"],
 
                                 queryObj.original == "tag=2526172523",
                                 queryObj.keys == ["tag"],

@@ -101,9 +101,22 @@ module HttpRequestParser {
         var url = Option.get(Utils.decodeURIComponent(raw_url), raw_url);
 
         if (Text.startsWith(url, #text("https://"))) {
-            let splitText = Iter.toArray(Text.tokens(url, #char('/')));
-            domain := splitText[1];
-            url := "/" # splitText[2];
+            let split_tokens = Text.tokens(url, #char('/'));
+            let next = split_tokens.next();
+
+            assert ?"https:" == next;
+
+            switch (split_tokens.next()) {
+                case (?_domain) {
+                    domain := _domain;
+                };
+                case (_) {
+                    domain := "";
+                    url := "/";
+                };
+            };
+
+            url := "/" # Text.join("/", split_tokens);
 
         };
 
@@ -157,11 +170,16 @@ module HttpRequestParser {
         public let queryObj : SearchParams = SearchParams(queryString);
 
         public let path = object {
-            public let original = url;
 
-            let path_iter = Text.split(url, #char('/'));
-            ignore path_iter.next();
-            public let array = Iter.toArray(path_iter);
+            let path_iter = Text.tokens(url, #char('/'));
+
+            public let array = Iter.toArray(
+                Iter.filter<Text>(
+                    path_iter,
+                    func(t : Text) = t != "",
+                )
+            );
+            public let original = "/" # Text.join("/", array.vals());
         };
 
     };
@@ -350,5 +368,21 @@ module HttpRequestParser {
         } else {
             null;
         };
+    };
+
+    public func encodeURIComponent(t : Text) : Text {
+        Utils.encodeURIComponent(t);
+    };
+
+    public func decodeURIComponent(t : Text) : ?Text {
+        Utils.decodeURIComponent(t);
+    };
+
+    public func encodeURI(t : Text) : Text {
+        Utils.encodeURI(t);
+    };
+
+    public func decodeURI(t : Text) : ?Text {
+        Utils.decodeURI(t);
     };
 };
