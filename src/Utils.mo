@@ -21,7 +21,7 @@ module {
         let chars = txt.chars();
         var num : Nat = 0;
         for (v in chars) {
-            let charToNum = Nat32.toNat(Char.toNat32(v) -48);
+            let charToNum = Nat32.toNat(Char.toNat32(v) - 48);
             assert (charToNum >= 0 and charToNum <= 9);
             num := num * 10 + charToNum;
         };
@@ -278,6 +278,24 @@ module {
 
         var accumulated_hex = "";
 
+        func extract_hex_bytes(accumulated_hex : Text, last_token : Text) : Bool {
+            switch (Hex.decode(accumulated_hex)) {
+                case (#ok(utf8_encoding)) {
+                    for (byte in utf8_encoding.vals()) { buffer.add(byte) };
+                    let non_decoded = if (last_token.size() < 2) "" else subText(last_token, 2, last_token.size());
+
+                    let bytes = Blob.toArray(Text.encodeUtf8(non_decoded));
+                    for (byte in bytes.vals()) { buffer.add(byte) };
+
+                    true; // passed
+
+                };
+                case (_) {
+                    false; // failed
+                };
+            };
+        };
+
         label decoding_hex for (sp in iter) {
             if (sp.size() == 2) {
                 accumulated_hex #= sp;
@@ -287,21 +305,18 @@ module {
             let hex = subText(sp, 0, 2);
             accumulated_hex #= hex;
 
-            switch (Hex.decode(accumulated_hex)) {
-                case (#ok(utf8_encoding)) {
-                    for (byte in utf8_encoding.vals()) { buffer.add(byte) };
-                    let non_decoded = subText(sp, 2, sp.size());
-                    let bytes = Blob.toArray(Text.encodeUtf8(non_decoded));
-                    for (byte in bytes.vals()) { buffer.add(byte) };
-
-                };
-                case (_) {
-                    return null;
-                };
+            if (not extract_hex_bytes(accumulated_hex, sp)) {
+                return null;
             };
 
             accumulated_hex := "";
 
+        };
+
+        if (accumulated_hex.size() > 0) {
+            if (not extract_hex_bytes(accumulated_hex, "")) {
+                return null;
+            };
         };
 
         Text.decodeUtf8(Blob.fromArray(Buffer.toArray(buffer)));

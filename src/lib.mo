@@ -100,51 +100,17 @@ module HttpRequestParser {
         var domain = Option.get(Utils.decodeURIComponent(raw_domain), raw_domain);
         var url = Option.get(Utils.decodeURIComponent(raw_url), raw_url);
 
-        if (Text.startsWith(url, #text("https://"))) {
-            let split_tokens = Text.tokens(url, #char('/'));
-            let next = split_tokens.next();
-
-            assert ?"https:" == next;
-
-            switch (split_tokens.next()) {
-                case (?_domain) {
-                    domain := _domain;
-                };
-                case (_) {
-                    domain := "";
-                    url := "/";
-                };
-            };
-
-            url := "/" # Text.join("/", split_tokens);
-
-        };
-
-        public let original = domain # url;
-
-        public let protocol = "https";
-
-        let authority = Iter.toArray(Text.tokens(domain, #char(':')));
-        let (_host, _port) : (Text, Nat16) = switch (authority.size()) {
-            case (0) ("", defaultPort(protocol));
-            case (1) (authority[0], defaultPort(protocol));
-            case (_) (authority[0], Nat16.fromNat(Utils.textToNat(authority[1])));
-        };
-
-        public let port = _port;
-
-        public let host = object {
-            public let original = _host;
-            public let array = Iter.toArray(Text.tokens(_host, #char('.')));
-        };
+        public let original = url;
 
         let p = Iter.toArray(Text.tokens(url, #char('#')));
 
         public let anchor = if (p.size() > 1) {
             url := p[0];
             p[1];
-        } else {
+        } else if (p.size() == 1) {
             url := p[0];
+            "";
+        } else {
             "";
         };
 
@@ -152,8 +118,7 @@ module HttpRequestParser {
 
         let queryString : Text = switch (re.size()) {
             case (0) {
-                url := "";
-                re[1];
+                "";
             };
             case (1) {
                 url := re[0];
@@ -169,16 +134,52 @@ module HttpRequestParser {
 
         public let queryObj : SearchParams = SearchParams(queryString);
 
+        public let protocol = if (Text.startsWith(url, #text("http://"))) {
+            "http";
+        } else { "https" };
+
+        if (Text.startsWith(url, #text("https://")) or Text.startsWith(url, #text("http://"))) {
+            let split_text = Text.split(url, #char('/'));
+
+            ignore split_text.next(); // "https:" or "http:"
+            ignore split_text.next(); // ""
+
+            switch (split_text.next()) {
+                case (?_domain) {
+                    domain := _domain;
+                };
+                case (_) { Debug.trap("Improper URL format: " # url) };
+            };
+
+            url := "/" # Text.join("/", split_text);
+
+        };
+
+        let authority = Iter.toArray(Text.tokens(domain, #char(':')));
+        let (_host, _port) : (Text, Nat16) = switch (authority.size()) {
+            case (0) ("", defaultPort(protocol));
+            case (1) (authority[0], defaultPort(protocol));
+            case (_) (authority[0], Nat16.fromNat(Utils.textToNat(authority[1])));
+        };
+
+        public let port = _port;
+
+        public let host = object {
+            public let original = _host;
+            public let array = Iter.toArray(Text.tokens(_host, #char('.')));
+        };
+
         public let path = object {
+            if (Text.startsWith(url, #char('/'))) {
+                switch (Text.stripStart(url, #char('/'))) {
+                    case (?_url) url := _url;
+                    case (_) {};
+                };
+            };
 
-            let path_iter = Text.tokens(url, #char('/'));
+            let path_iter = Text.split(url, #char('/'));
 
-            public let array = Iter.toArray(
-                Iter.filter<Text>(
-                    path_iter,
-                    func(t : Text) = t != "",
-                )
-            );
+            public let array = Iter.toArray(path_iter);
             public let original = "/" # Text.join("/", array.vals());
         };
 
@@ -281,10 +282,10 @@ module HttpRequestParser {
                         null;
                     };
 
-                    ? #multipart(boundary);
+                    ?#multipart(boundary);
                 } else {
                     if (isURLEncoded(conType)) {
-                        ? #urlencoded;
+                        ?#urlencoded;
                     } else {
                         null;
                     };
