@@ -1,11 +1,7 @@
 // @testmode wasi
 import Iter "mo:base/Iter";
 import Debug "mo:base/Debug";
-import Prelude "mo:base/Prelude";
-import Char "mo:base/Char";
 import Text "mo:base/Text";
-
-import Bench "mo:bench";
 
 import HttpParser "../src";
 
@@ -43,17 +39,17 @@ let body = Text.encodeUtf8(body_text);
 
 let #ok(form) = HttpParser.parseForm(body, #multipart(null));
 
-for (i in Iter.range(0, 1000)){
+for (i in Iter.range(0, 1000)) {
     let filename = "file" # debug_show (i) # ".txt";
     let ?files = form.files(filename);
 
     let file = files[0];
-    
+
     assert (file.mimeType # "/" # file.mimeSubType == "text/plain");
     assert (filename == file.filename);
     assert file.bytes.size() == i;
     assert file.end - file.start == i;
-};    
+};
 
 let ?markdown = form.files("file.md");
 assert markdown[0].mimeType # "/" # markdown[0].mimeSubType == "text/markdown";
@@ -70,4 +66,3 @@ let ?json = form.files("file.json");
 assert json[0].mimeType # "/" # json[0].mimeSubType == "application/json";
 assert json[0].filename == "file.json";
 assert json[0].bytes.size() == (1024 ** 2) * 4;
-
