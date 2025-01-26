@@ -3,6 +3,8 @@ import HttpParser "../src";
 
 import { suite; test } "mo:test";
 
+let { Headers } = HttpParser;
+
 let headers = HttpParser.Headers([]);
 
 suite(
@@ -213,5 +215,110 @@ suite(
             },
         );
 
+    },
+);
+
+suite(
+    "Host from Headers Tests",
+    func() {
+        test(
+            "Host from Headers - Basic",
+            func() {
+                let headers = Headers([("host", "example.com")]);
+                let url = HttpParser.URL("/path", headers);
+                assert url.protocol == "https";
+                assert url.host.original == "example.com";
+                assert url.host.array == ["example", "com"];
+                assert url.port == 443;
+            },
+        );
+
+        test(
+            "Host from Headers - With Port",
+            func() {
+                let headers = Headers([("host", "localhost:8080")]);
+                let url = HttpParser.URL("/api/v1", headers);
+                assert url.host.original == "localhost";
+                assert url.host.array == ["localhost"];
+                assert url.port == 8080;
+            },
+        );
+
+        test(
+            "Host from Headers - Subdomain",
+            func() {
+                let headers = Headers([("host", "api.example.co.uk:3000")]);
+                let url = HttpParser.URL("/users", headers);
+                assert url.host.original == "api.example.co.uk";
+                assert url.host.array == ["api", "example", "co", "uk"];
+                assert url.port == 3000;
+            },
+        );
+
+        test(
+            "Headers vs URL Priority",
+            func() {
+                let headers = Headers([("host", "from-header.com:8080")]);
+                let url = HttpParser.URL("https://from-url.com:9090/path", headers);
+                assert url.host.original == "from-url.com";
+                assert url.port == 9090;
+                assert url.protocol == "https";
+            },
+        );
+
+        test(
+            "Missing Host Header",
+            func() {
+                let headers = Headers([]);
+                let url = HttpParser.URL("/path", headers);
+                assert url.host.original == "";
+                assert url.host.array == [];
+                assert url.port == 443;
+            },
+        );
+
+        test(
+            "Empty Host Header",
+            func() {
+                let headers = Headers([("host", "")]);
+                let url = HttpParser.URL("/path", headers);
+                assert url.host.original == "";
+                assert url.host.array == [];
+            },
+        );
+
+        // - traps
+        // test(
+        //     "Invalid Host Header Port",
+        //     func() {
+        //         let headers = Headers([("host", "example.com:invalid")]);
+        //         let url = HttpParser.URL("/path", headers);
+        //         assert url.host.original == "example.com";
+        //         assert url.port == 443;
+        //     },
+        // );
+
+        test(
+            "Host Header with IPv4",
+            func() {
+                let headers = Headers([("host", "127.0.0.1:4000")]);
+                let url = HttpParser.URL("/path", headers);
+                assert url.host.original == "127.0.0.1";
+                assert url.host.array == ["127", "0", "0", "1"];
+                assert url.port == 4000;
+            },
+        );
+
+        // - not supported
+        // test(
+        //     "Host Header with IPv6",
+        //     func() {
+        //         let headers = Headers([("host", "[2001:db8::1]:8080")]);
+        //         let url = HttpParser.URL("/path", headers);
+        //         assert url.host.original == "[2001:db8::1]";
+        //         assert url.host.array == ["2001", "db8", "", "1"];
+        //         assert url.port == 8080;
+        //     },
+        // );
     },
 );

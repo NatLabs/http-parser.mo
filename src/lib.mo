@@ -95,12 +95,19 @@ module HttpRequestParser {
 
     public class URL(raw_url : Text, headers : Headers) {
 
-        let raw_domain = (Option.get(headers.get("host"), [""]))[0];
+        let raw_domain = switch (headers.get("host")) {
+            case (?host_array) if (host_array.size() > 0) host_array[0] else "";
+            case (_) "";
+        };
 
         var domain = Option.get(Utils.decodeURIComponent(raw_domain), raw_domain);
         var url = Option.get(Utils.decodeURIComponent(raw_url), raw_url);
 
-        public let original = url;
+        public let original = if (Text.startsWith(url, #text("http")) or not Text.startsWith(url, #char('/'))) {
+            url;
+        } else {
+            domain # url;
+        };
 
         let p = Iter.toArray(Text.tokens(url, #char('#')));
 
