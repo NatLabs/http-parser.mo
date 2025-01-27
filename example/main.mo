@@ -3,7 +3,7 @@ import Nat16 "mo:base/Nat16";
 import Option "mo:base/Option";
 import Text "mo:base/Text";
 
-import F "mo:format";
+import F "mo:gt-format";
 // import HttpParser "mo:http-parser";
 import HttpParser "../src";
 

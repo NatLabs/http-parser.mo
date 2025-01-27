@@ -4,7 +4,7 @@ import Option "mo:base/Option";
 import Text "mo:base/Text";
 
 import ArrayModule "mo:array/Array";
-import JSON "mo:json/JSON";
+import JSON "mo:gt-json/JSON";
 import { suite; test } "mo:test";
 
 import HttpParser "../src/lib";

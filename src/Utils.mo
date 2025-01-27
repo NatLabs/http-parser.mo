@@ -12,8 +12,8 @@ import Option "mo:base/Option";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
 
-import Hex "mo:encoding/Hex";
-import JSON "mo:json/JSON";
+import Hex "mo:gt-encoding/Hex";
+import JSON "mo:gt-json/JSON";
 
 module {
     public func textToNat(txt : Text) : Nat {

@@ -10,7 +10,7 @@ import Option "mo:base/Option";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
 
-import JSON "mo:json/JSON";
+import JSON "mo:gt-json/JSON";
 
 import Types "Types";
 import Utils "Utils";
