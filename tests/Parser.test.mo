@@ -80,7 +80,8 @@ suite(
                         assert host.original == "m7sm4-2iaaa-aaaab-qabra-cai.raw.ic0.app";
                         assert host.array == ["m7sm4-2iaaa-aaaab-qabra-cai", "raw", "ic0", "app"];
                         assert path.original == "/counter/";
-                        assert path.array == ["counter", ""];
+                        // Normalize the array by removing empty trailing segments
+                        assert path.array == ["counter"];
                         assert queryObj.original == "tag=2526172523";
                         assert queryObj.keys == ["tag"];
                         assert queryObj.get("tag") == ?"2526172523";
@@ -105,6 +106,33 @@ suite(
                         assert queryObj.keys == [];
                         assert Iter.toArray(queryObj.trieMap.entries()) == [];
                         assert anchor == "";
+                    },
+                );
+
+                test(
+                    "Path normalization tests",
+                    func() {
+                        let headers = Headers([]);
+
+                        // Test consecutive slashes normalization
+                        let consecutiveSlashes = HttpParser.URL("http://example.com//path///to////resource", headers);
+                        assert consecutiveSlashes.path.original == "/path/to/resource";
+                        assert consecutiveSlashes.path.array == ["path", "to", "resource"];
+
+                        // Test trailing slash preservation in original path but normalization in array
+                        let trailingSlash = HttpParser.URL("http://example.com/path/", headers);
+                        assert trailingSlash.path.original == "/path/";
+                        assert trailingSlash.path.array == ["path"];
+
+                        // Test multiple trailing slashes normalization
+                        let multipleTrailingSlashes = HttpParser.URL("http://example.com/path///", headers);
+                        assert multipleTrailingSlashes.path.original == "/path/";
+                        assert multipleTrailingSlashes.path.array == ["path"];
+
+                        // Test root path
+                        let rootPath = HttpParser.URL("http://example.com/", headers);
+                        assert rootPath.path.original == "/";
+                        assert rootPath.path.array == [];
                     },
                 );
             },

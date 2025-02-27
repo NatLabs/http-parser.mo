@@ -184,10 +184,12 @@ module HttpRequestParser {
                 };
             };
 
-            let path_iter = Text.split(url, #char('/'));
+            let path_iter = Text.tokens(url, #char('/'));
 
             public let array = Iter.toArray(path_iter);
-            public let original = "/" # Text.join("/", array.vals());
+            public let original = "/" # Text.join("/", array.vals()) # (
+                if (Text.endsWith(url, #char('/'))) "/" else ""
+            );
         };
 
     };

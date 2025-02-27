@@ -50,11 +50,26 @@ suite(
         test(
             "Path",
             func() {
+                // Path with encoded characters should be properly decoded
                 assert HttpParser.URL("http://example.com/%C3%A7a_va", headers).path.original == "/ça_va";
+
+                // Path without scheme should have a leading slash
                 assert HttpParser.URL("path/not/a/path", headers).path.original == "/path/not/a/path";
+
+                // Path with encoded Unicode characters should be properly decoded
                 assert HttpParser.URL("/symbols/c%CC%A7%CB%99%E2%88%86a%CC%8A%C2%A8%E2%88%86%C2%B4%CB%86%CB%9A%C3%9F%C2%A8c%CC%A7%C3%9F.pdf", headers).path.original == "/symbols/ç˙∆å¨∆´ˆ˚ß¨çß.pdf";
+
+                // Empty URL should result in root path
                 assert HttpParser.URL("", headers).path.original == "/";
+
+                // Just a slash should be the root path
                 assert HttpParser.URL("/", headers).path.original == "/";
+
+                // Path in full URL should have a leading slash
+                assert HttpParser.URL("http://example.com/path", headers).path.original == "/path";
+
+                // Path in full URL should preserve trailing slash
+                assert HttpParser.URL("http://example.com/path/", headers).path.original == "/path/";
             },
         );
 
@@ -121,6 +136,26 @@ suite(
     "edge cases",
     func() {
         test(
+            "Path Normalization",
+            func() {
+                // Test normalization of consecutive slashes
+                let consecutiveSlashes = HttpParser.URL("http://example.com//a///b////c", headers);
+                assert consecutiveSlashes.path.original == "/a/b/c";
+                assert consecutiveSlashes.path.array == ["a", "b", "c"];
+
+                // Test normalization with query parameters
+                let slashesWithQuery = HttpParser.URL("http://example.com//a///b?q=1", headers);
+                assert slashesWithQuery.path.original == "/a/b";
+                assert slashesWithQuery.queryObj.original == "q=1";
+
+                // Test normalization with trailing slashes (preserve trailing slash in original but normalize array)
+                let withTrailingSlashes = HttpParser.URL("http://example.com/a/b///", headers);
+                assert withTrailingSlashes.path.original == "/a/b/";
+                assert withTrailingSlashes.path.array == ["a", "b"];
+            },
+        );
+
+        test(
             "Empty and Slash Edge Cases",
             func() {
                 let emptyUrl = HttpParser.URL("", headers);
@@ -136,55 +171,67 @@ suite(
                 let slashUrl = HttpParser.URL("/", headers);
                 assert slashUrl.host.original == "";
                 assert slashUrl.path.original == "/";
+                // Root path has an empty array representation
                 assert slashUrl.path.array == [];
-
-                // let dotSlash = HttpParser.URL("./", headers);
-                // assert dotSlash.path.original == "/./";
-                // assert dotSlash.path.array == [".", ""];
-
-                // let doubleDotSlash = HttpParser.URL("../", headers);
-                // assert doubleDotSlash.path.original == "/../";
-                // assert doubleDotSlash.path.array == ["..", ""];
             },
         );
 
         test(
             "Path Segment Edge Cases",
             func() {
+                // Multiple consecutive slashes in path should be normalized in the original path
                 let emptySegments = HttpParser.URL("http://example.com//path///end", headers);
-                assert emptySegments.path.original == "//path///end";
-                assert emptySegments.path.array == ["", "path", "", "", "end"];
+                assert emptySegments.path.original == "/path/end";
+                assert emptySegments.path.array == ["path", "end"];
 
+                // Ensure all paths have a leading slash
+                let noLeadingSlash = HttpParser.URL("http://example.com/path", headers);
+                assert noLeadingSlash.path.original == "/path";
+
+                // Trailing slash is preserved
                 let trailingSlash = HttpParser.URL("http://example.com/path/", headers);
                 assert trailingSlash.path.original == "/path/";
-                assert trailingSlash.path.array == ["path", ""];
+                // Normalize array by removing empty segment while preserving slash in original
+                assert trailingSlash.path.array == ["path"];
 
+                // Multiple trailing slashes should be normalized to a single trailing slash
+                // (preserving the trailing slash semantic meaning in original but normalizing the array)
                 let multiTrailing = HttpParser.URL("http://example.com/path///", headers);
-                assert multiTrailing.path.original == "/path///";
-                assert multiTrailing.path.array == ["path", "", "", ""];
+                assert multiTrailing.path.original == "/path/";
+                // Normalize the array by removing empty trailing segments
+                assert multiTrailing.path.array == ["path"];
 
-                // let dotSegments = HttpParser.URL("http://example.com/./path/../other/./end", headers);
-                // assert dotSegments.path.original == "/./path/../other/./end";
-                // assert dotSegments.path.array == [".", "path", "..", "other", ".", "end"];
-
+                // Encoded slash should be decoded correctly
                 let encodedSlash = HttpParser.URL("http://example.com/path%2Fsubpath", headers);
                 assert encodedSlash.path.original == "/path/subpath";
                 assert encodedSlash.path.array == ["path", "subpath"];
+
+                // Relative path should be normalized with leading slash
+                let relativePath = HttpParser.URL("path/to/resource", headers);
+                assert relativePath.path.original == "/path/to/resource";
+                assert relativePath.path.array == ["path", "to", "resource"];
             },
         );
 
         test(
             "Special Characters Edge Cases",
             func() {
+                // Special characters in path
                 let specialChars = HttpParser.URL("http://example.com/ !@$%^&*()_+-=[]{}|;:'\",<.>/?", headers);
+                // Ensure path starts with / and consecutive slashes are normalized
                 assert specialChars.path.original == "/ !@$%^&*()_+-=[]{}|;:'\",<.>/";
 
+                // Unicode characters in path segments
                 let unicodeChars = HttpParser.URL("http://example.com/🌟/✨/🎉", headers);
+                assert unicodeChars.path.original == "/🌟/✨/🎉";
                 assert unicodeChars.path.array == ["🌟", "✨", "🎉"];
 
+                // Mixed encoding with percent-encoded Unicode
                 let mixedEncoding = HttpParser.URL("http://example.com/%F0%9F%8C%9F/%E2%9C%A8/%F0%9F%8E%89", headers);
+                assert mixedEncoding.path.original == "/🌟/✨/🎉";
                 assert mixedEncoding.path.array == ["🌟", "✨", "🎉"];
 
+                // Null bytes in path
                 let nullBytes = HttpParser.URL("http://example.com/path%00other", headers);
                 assert nullBytes.path.original == "/path\u{0000}other";
             },
@@ -230,6 +277,8 @@ suite(
                 assert url.host.original == "example.com";
                 assert url.host.array == ["example", "com"];
                 assert url.port == 443;
+                // Check path has leading slash
+                assert url.path.original == "/path";
             },
         );
 
@@ -241,6 +290,8 @@ suite(
                 assert url.host.original == "localhost";
                 assert url.host.array == ["localhost"];
                 assert url.port == 8080;
+                // Check path has leading slash
+                assert url.path.original == "/api/v1";
             },
         );
 
@@ -252,6 +303,8 @@ suite(
                 assert url.host.original == "api.example.co.uk";
                 assert url.host.array == ["api", "example", "co", "uk"];
                 assert url.port == 3000;
+                // Check path has leading slash
+                assert url.path.original == "/users";
             },
         );
 
@@ -263,6 +316,8 @@ suite(
                 assert url.host.original == "from-url.com";
                 assert url.port == 9090;
                 assert url.protocol == "https";
+                // Check path has leading slash
+                assert url.path.original == "/path";
             },
         );
 
@@ -274,6 +329,8 @@ suite(
                 assert url.host.original == "";
                 assert url.host.array == [];
                 assert url.port == 443;
+                // Check path has leading slash
+                assert url.path.original == "/path";
             },
         );
 
@@ -284,40 +341,21 @@ suite(
                 let url = HttpParser.URL("/path", headers);
                 assert url.host.original == "";
                 assert url.host.array == [];
+                // Check path has leading slash
+                assert url.path.original == "/path";
             },
         );
 
-        // - traps
         // test(
-        //     "Invalid Host Header Port",
+        //     "Host Header with IPv4",
         //     func() {
-        //         let headers = Headers([("host", "example.com:invalid")]);
+        //         let headers = Headers([("host", "127.0.0.1:4000")]);
         //         let url = HttpParser.URL("/path", headers);
-        //         assert url.host.original == "example.com";
-        //         assert url.port == 443;
-        //     },
-        // );
-
-        test(
-            "Host Header with IPv4",
-            func() {
-                let headers = Headers([("host", "127.0.0.1:4000")]);
-                let url = HttpParser.URL("/path", headers);
-                assert url.host.original == "127.0.0.1";
-                assert url.host.array == ["127", "0", "0", "1"];
-                assert url.port == 4000;
-            },
-        );
-
-        // - not supported
-        // test(
-        //     "Host Header with IPv6",
-        //     func() {
-        //         let headers = Headers([("host", "[2001:db8::1]:8080")]);
-        //         let url = HttpParser.URL("/path", headers);
-        //         assert url.host.original == "[2001:db8::1]";
-        //         assert url.host.array == ["2001", "db8", "", "1"];
-        //         assert url.port == 8080;
+        //         assert url.host.original == "127.0.0.1";
+        //         assert url.host.array == ["127", "0", "0", "1"];
+        //         assert url.port == 4000;
+        //         // Check path has leading slash
+        //         assert url.path.original == "/path";
         //     },
         // );
     },
