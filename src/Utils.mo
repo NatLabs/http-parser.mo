@@ -183,7 +183,11 @@ module {
     };
 
     public func decodeURIComponent(t : Text) : ?Text {
-        let iter = Text.split(t, #char '%');
+        // Per the application/x-www-form-urlencoded standard, '+' denotes a space.
+        // See: https://url.spec.whatwg.org/#urlencoded-parsing
+        let space_decoded_text = Text.replace(t, #char '+', " ");
+
+        let iter = Text.split(space_decoded_text, #char '%');
         var decodedURI = Option.get(iter.next(), "");
 
         for (sp in iter) {
