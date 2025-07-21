@@ -182,31 +182,62 @@ module {
         result;
     };
 
-    public func decodeURIComponent(t : Text) : ?Text {
-        // Per the application/x-www-form-urlencoded standard, '+' denotes a space.
-        // See: https://url.spec.whatwg.org/#urlencoded-parsing
-        let space_decoded_text = Text.replace(t, #char '+', " ");
+    // Helper function to check if a character is a valid hexadecimal digit.
+    private func isHexDigit(c : Char) : Bool {
+        return (c >= '0' and c <= '9') or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F');
+    };
 
-        let iter = Text.split(space_decoded_text, #char '%');
-        var decodedURI = Option.get(iter.next(), "");
+    /**
+    * A robust implementation of decodeURIComponent that correctly handles all edge cases,
+    * including double-encoding (e.g., %25).
+    *
+    * It iterates through the source bytes, building a new buffer. When it encounters a '%',
+    * it looks ahead two characters, validates them as hex, decodes them, and appends the
+    * resulting byte. Otherwise, it appends characters literally.
+    */
+    public func decodeURIComponent(encoded : Text) : ?Text {
+        let sourceBytes = Blob.toArray(Text.encodeUtf8(encoded));
+        let decodedBuffer = Buffer.Buffer<Nat8>(sourceBytes.size());
+        var i = 0;
 
-        for (sp in iter) {
-            let hex = subText(sp, 0, 2);
+        label parseBytes while (i < sourceBytes.size()) {
+            let byte = sourceBytes[i];
 
-            switch (Hex.decode(hex)) {
-                case (#ok(symbols)) {
-                    let char = (nat8ToChar(symbols[0]));
-                    decodedURI := decodedURI # Char.toText(char) #
-                    Text.trimStart(sp, #text hex);
+            // Compare the byte directly with the Nat8 value for '%', which is 37.
+            if (byte == (37 : Nat8)) {
+                // Check if there are at least two characters to look ahead.
+                if (i + 2 < sourceBytes.size()) {
+                    // Use Char.fromNat32 to convert bytes back to Chars for checking.
+                    let char1 = Char.fromNat32(Nat16.toNat32(Nat8.toNat16(sourceBytes[i + 1])));
+                    let char2 = Char.fromNat32(Nat16.toNat32(Nat8.toNat16(sourceBytes[i + 2])));
+
+                    // Check if both lookahead characters are valid hex digits.
+                    if (isHexDigit(char1) and isHexDigit(char2)) {
+                        // If they are, decode the two-character hex string.
+                        let hexString = Text.fromChar(char1) # Text.fromChar(char2);
+                        switch (Hex.decode(hexString)) {
+                            case (#ok(decodedByteBlob)) {
+                                if (decodedByteBlob.size() == 1) {
+                                    decodedBuffer.add(decodedByteBlob[0]);
+                                    i += 3; // Advance index past the '%' and the two hex digits.
+                                    continue parseBytes;
+                                };
+                            };
+                            case (#err(_)) { /* Unreachable */ };
+                        };
+                    };
                 };
-                case (_) {
-                    return null;
-                };
+                // If the '%' is not followed by two valid hex digits, treat it as a literal character.
+                decodedBuffer.add(byte);
+                i += 1;
+            } else {
+                // Not a '%', so just add the byte literally.
+                decodedBuffer.add(byte);
+                i += 1;
             };
-
         };
 
-        ?decodedURI;
+        return Text.decodeUtf8(Blob.fromArray(Buffer.toArray(decodedBuffer)));
     };
 
 };
