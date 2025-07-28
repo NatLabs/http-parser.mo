@@ -200,6 +200,101 @@ let success = run([
                             ]);
                         },
                     ),
+
+                    it(
+                        "Decodes '+' as a space in URL Encoded pairs",
+                        do {
+                            // This query string uses '+' for spaces, a common encoding method.
+                            let queryObj = SearchParams("scope=openid+profile+prometheus:charge&response_type=code");
+
+                            assertAllTrue([
+                                queryObj.keys == ["scope", "response_type"],
+
+                                // The core assertion: check that '+' was converted to a space.
+                                queryObj.get("scope") == ?"openid profile prometheus:charge",
+
+                                // Also check that the other parameter is still correct.
+                                queryObj.get("response_type") == ?"code",
+                            ]);
+                        },
+                    ),
+
+                    it(
+                        "Correctly decodes a single layer of percent-encoding (handles 'double encoding')",
+                        do {
+                            // This query string contains a value that has been URL-encoded twice.
+                            // The value 'a b' was first encoded to 'a%20b'.
+                            // That result was then encoded again, turning the '%' into '%25',
+                            // resulting in 'a%2520b'.
+                            // A compliant parser should only decode one layer, resulting in 'a%20b'.
+                            let queryObj = SearchParams("value=a%2520b&other=normal");
+
+                            assertAllTrue([
+                                // Check that both keys were parsed correctly.
+                                queryObj.keys == ["value", "other"],
+
+                                // The core assertion: check that 'a%2520b' was decoded ONCE to 'a%20b'.
+                                queryObj.get("value") == ?"a%20b",
+
+                                // Also verify the other parameter is unaffected.
+                                queryObj.get("other") == ?"normal",
+                            ]);
+                        },
+                    ),
+
+                    it(
+                        "Correctly decodes a valid sequence at the very end of the string",
+                        do {
+                            // This test directly addresses the concern raised in Comment 1 regarding the
+                            // boundary check `i + 2 < sourceBytes.size()`.
+                            //
+                            // The comment suggested the condition was incorrect and might miss a valid
+                            // sequence at the end of the input. This test proves the original logic is
+                            // sound by placing a valid percent-encoded sequence (`%2F`) at the exact
+                            // end of the string.
+                            //
+                            // A successful pass confirms the loop condition correctly handles this edge case.
+                            let input = "path=a/b%2F";
+                            let expected = ?"a/b/";
+
+                            assertAllTrue([
+                                // The core assertion: check that the input is decoded correctly.
+                                SearchParams(input).get("path") == expected,
+                            ]);
+                        },
+                    ),
+
+                    it(
+                        "Treats malformed or incomplete percent-encodings as literal text",
+                        do {
+                            // This test addresses the concerns from both Comment 2 and Comment 3.
+                            //
+                            // It verifies that the function's pre-validation logic—the boundary check
+                            // (`i + 2 < size`) and the `isHexDigit` check—is working correctly.
+                            // When an invalid sequence is found, the function should treat the '%' and
+                            // subsequent characters as literals rather than attempting to decode them.
+                            //
+                            // - For "invalid%2G", the `isHexDigit('G')` check fails.
+                            // - For "incomplete%F", the `i + 2 < size` check fails.
+                            // - For "trailing%", the `i + 2 < size` check fails.
+                            //
+                            // By correctly handling these cases *before* calling `Hex.decode`, this test
+                            // proves that the `#err` case in the `switch` statement is indeed unreachable,
+                            // validating the '/* Unreachable */' comment (addressing Comment 3).
+                            // It also shows the fall-through logic correctly results in treating the '%'
+                            // as a literal, which is the desired behavior for malformed input (related to Comment 2).
+                            assertAllTrue([
+                                // Case 1: Invalid hex character
+                                Utils.decodeURIComponent("invalid%2G") == ?"invalid%2G",
+
+                                // Case 2: Incomplete sequence (one character)
+                                Utils.decodeURIComponent("incomplete%F") == ?"incomplete%F",
+
+                                // Case 3: Trailing '%' with no following characters
+                                Utils.decodeURIComponent("trailing%") == ?"trailing%",
+                            ]);
+                        },
+                    ),
                 ],
             ),
 
@@ -356,7 +451,7 @@ let success = run([
                                     case (null) true;
                                 },
 
-                                body.bytes(9, 23).toArray() == ArrayModule.slice(bytes, 9, 23)
+                                body.bytes(9, 23).toArray() == ArrayModule.slice(bytes, 9, 23),
                             ]);
                         },
                     ),
@@ -407,7 +502,7 @@ let success = run([
                                             file.start == 172,
                                             file.end == 178,
                                             file.bytes.toArray() == Utils.textToBytes("value2"),
-                                            file.bytes.toArray() == ArrayModule.slice(blobArray, 172, 178)
+                                            file.bytes.toArray() == ArrayModule.slice(blobArray, 172, 178),
                                         ]);
                                     };
                                     case (_) false;

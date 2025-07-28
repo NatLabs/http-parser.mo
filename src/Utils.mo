@@ -10,6 +10,7 @@ import Nat32 "mo:base/Nat32";
 import Option "mo:base/Option";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
+import Debug "mo:base/Debug";
 
 import Hex "mo:encoding/Hex";
 import JSON "mo:json/JSON";
@@ -182,27 +183,69 @@ module {
         result;
     };
 
-    public func decodeURIComponent(t : Text) : ?Text {
-        let iter = Text.split(t, #char '%');
-        var decodedURI = Option.get(iter.next(), "");
+    // Helper function to check if a character is a valid hexadecimal digit.
+    private func isHexDigit(c : Char) : Bool {
+        return (c >= '0' and c <= '9') or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F');
+    };
 
-        for (sp in iter) {
-            let hex = subText(sp, 0, 2);
+    /**
+    * A robust implementation of decodeURIComponent that correctly handles all edge cases,
+    * including double-encoding (e.g., %25).
+    *
+    * It iterates through the source bytes, building a new buffer. When it encounters a '%',
+    * it looks ahead two characters, validates them as hex, decodes them, and appends the
+    * resulting byte. Otherwise, it appends characters literally.
+    */
+    public func decodeURIComponent(encoded : Text) : ?Text {
+        let sourceBytes = Blob.toArray(Text.encodeUtf8(encoded));
+        let decodedBuffer = Buffer.Buffer<Nat8>(sourceBytes.size());
+        var i = 0;
 
-            switch (Hex.decode(hex)) {
-                case (#ok(symbols)) {
-                    let char = (nat8ToChar(symbols[0]));
-                    decodedURI := decodedURI # Char.toText(char) #
-                    Text.trimStart(sp, #text hex);
+        label parseBytes while (i < sourceBytes.size()) {
+            let byte = sourceBytes[i];
+
+            // Compare the byte directly with the Nat8 value for '%', which is 37.
+            if (byte == (37 : Nat8)) {
+                // Check if there are at least two characters to look ahead. This condition
+                // is correct and handles sequences at the very end of the string.
+                if (i + 2 < sourceBytes.size()) {
+                    let char1 = Char.fromNat32(Nat16.toNat32(Nat8.toNat16(sourceBytes[i + 1])));
+                    let char2 = Char.fromNat32(Nat16.toNat32(Nat8.toNat16(sourceBytes[i + 2])));
+
+                    // Pre-validate that both lookahead characters are valid hex digits.
+                    if (isHexDigit(char1) and isHexDigit(char2)) {
+                        let hexString = Text.fromChar(char1) # Text.fromChar(char2);
+                        switch (Hex.decode(hexString)) {
+                            case (#ok(decodedByteBlob)) {
+                                // **FIX**: The original code had a fragile `if` condition here.
+                                // This version is more direct. A 2-char hex string is guaranteed
+                                // to decode to a 1-byte blob. We add the byte and explicitly
+                                // continue the loop, preventing any accidental fall-through.
+                                decodedBuffer.add(decodedByteBlob[0]);
+                                i += 3; // Advance index past the '%' and the two hex digits.
+                                continue parseBytes;
+                            };
+                            case (#err(_)) {
+                                // This case remains unreachable because of the `isHexDigit` guard.
+                                // If it were ever reached, it would indicate a fundamental logic error.
+                                // Trapping is a safe response to an impossible state.
+                                Debug.trap("Unreachable: Hex.decode failed on a pre-validated string.");
+                            };
+                        };
+                    };
                 };
-                case (_) {
-                    return null;
-                };
+                // If the '%' is not followed by two valid hex digits (due to string end or
+                // invalid characters), we fall through to here and treat it as a literal.
+                decodedBuffer.add(byte);
+                i += 1;
+            } else {
+                // Not a '%', so just add the byte literally.
+                decodedBuffer.add(byte);
+                i += 1;
             };
-
         };
 
-        ?decodedURI;
+        return Text.decodeUtf8(Blob.fromArray(Buffer.toArray(decodedBuffer)));
     };
 
 };

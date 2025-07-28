@@ -40,11 +40,18 @@ module HttpRequestParser {
         for (encodedPair in encodedPairs.vals()) {
             let pair : [Text] = Iter.toArray(Text.split(encodedPair, #char '='));
             if (pair.size() == 2) {
-                let key = pair[0];
-                let val = pair[1];
+                let key_encoded = pair[0];
+                let val_encoded = pair[1];
 
-                let decodedKey = Option.get(Utils.decodeURIComponent(key), key);
-                let decodedVal = Option.get(Utils.decodeURIComponent(val), val);
+                // --- THE FIX ---
+                // 1. First, handle the '+' to space conversion. This is part of the
+                //    application/x-www-form-urlencoded standard.
+                let key_with_spaces = Text.replace(key_encoded, #char '+', " ");
+                let val_with_spaces = Text.replace(val_encoded, #char '+', " ");
+
+                // 2. THEN, decode any percent-encoded characters.
+                let decodedKey = Option.get(Utils.decodeURIComponent(key_with_spaces), key_with_spaces);
+                let decodedVal = Option.get(Utils.decodeURIComponent(val_with_spaces), val_with_spaces);
 
                 mvMap.add(decodedKey, decodedVal);
             };
@@ -256,10 +263,10 @@ module HttpRequestParser {
                         null;
                     };
 
-                    ? #multipart(boundary);
+                    ?#multipart(boundary);
                 } else {
                     if (isURLEncoded(conType)) {
-                        ? #urlencoded;
+                        ?#urlencoded;
                     } else {
                         null;
                     };
