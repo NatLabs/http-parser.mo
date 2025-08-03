@@ -10,7 +10,7 @@ import Option "mo:base/Option";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
 
-import JSON "mo:gt-json/JSON";
+import JSON "../submodules/json.mo/src/JSON";
 
 import Types "Types";
 import Utils "Utils";

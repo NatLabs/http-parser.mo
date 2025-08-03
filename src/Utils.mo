@@ -11,10 +11,9 @@ import Nat32 "mo:base/Nat32";
 import Option "mo:base/Option";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
-import Debug "mo:base/Debug";
 
-import Hex "mo:gt-encoding/Hex";
-import JSON "mo:gt-json/JSON";
+import Hex "mo:hex";
+import JSON "../submodules/json.mo/src/JSON";
 
 module {
     public func textToNat(txt : Text) : Nat {
@@ -271,30 +270,6 @@ module {
         result;
     };
 
-<<<<<<< HEAD
-    public func decodeURIComponent(t : Text) : ?Text {
-        let buffer : Buffer.Buffer<Nat8> = Buffer.Buffer<Nat8>(t.size() * 4);
-        let iter = Text.split(t, #char '%');
-        let bytes = Blob.toArray(Text.encodeUtf8(Option.get(iter.next(), "")));
-        for (byte in bytes.vals()) { buffer.add(byte) };
-
-        var accumulated_hex = "";
-
-        func extract_hex_bytes(accumulated_hex : Text, last_token : Text) : Bool {
-            switch (Hex.decode(accumulated_hex)) {
-                case (#ok(utf8_encoding)) {
-                    for (byte in utf8_encoding.vals()) { buffer.add(byte) };
-                    let non_decoded = if (last_token.size() < 2) "" else subText(last_token, 2, last_token.size());
-
-                    let bytes = Blob.toArray(Text.encodeUtf8(non_decoded));
-                    for (byte in bytes.vals()) { buffer.add(byte) };
-
-                    true; // passed
-
-                };
-                case (_) {
-                    false; // failed
-=======
     // Helper function to check if a character is a valid hexadecimal digit.
     private func isHexDigit(c : Char) : Bool {
         return (c >= '0' and c <= '9') or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F');
@@ -327,7 +302,7 @@ module {
                     // Pre-validate that both lookahead characters are valid hex digits.
                     if (isHexDigit(char1) and isHexDigit(char2)) {
                         let hexString = Text.fromChar(char1) # Text.fromChar(char2);
-                        switch (Hex.decode(hexString)) {
+                        switch (Hex.toArray(hexString)) {
                             case (#ok(decodedByteBlob)) {
                                 // **FIX**: The original code had a fragile `if` condition here.
                                 // This version is more direct. A 2-char hex string is guaranteed
@@ -341,11 +316,10 @@ module {
                                 // This case remains unreachable because of the `isHexDigit` guard.
                                 // If it were ever reached, it would indicate a fundamental logic error.
                                 // Trapping is a safe response to an impossible state.
-                                Debug.trap("Unreachable: Hex.decode failed on a pre-validated string.");
+                                Debug.trap("Unreachable: Hex.toArray failed on a pre-validated string.");
                             };
                         };
                     };
->>>>>>> main
                 };
                 // If the '%' is not followed by two valid hex digits (due to string end or
                 // invalid characters), we fall through to here and treat it as a literal.
@@ -356,38 +330,9 @@ module {
                 decodedBuffer.add(byte);
                 i += 1;
             };
-<<<<<<< HEAD
-        };
-
-        label decoding_hex for (sp in iter) {
-            if (sp.size() == 2) {
-                accumulated_hex #= sp;
-                continue decoding_hex;
-            };
-
-            let hex = subText(sp, 0, 2);
-            accumulated_hex #= hex;
-
-            if (not extract_hex_bytes(accumulated_hex, sp)) {
-                return null;
-            };
-
-            accumulated_hex := "";
-
-        };
-
-        if (accumulated_hex.size() > 0) {
-            if (not extract_hex_bytes(accumulated_hex, "")) {
-                return null;
-            };
-        };
-
-        Text.decodeUtf8(Blob.fromArray(Buffer.toArray(buffer)));
-=======
         };
 
         return Text.decodeUtf8(Blob.fromArray(Buffer.toArray(decodedBuffer)));
->>>>>>> main
     };
 
     public func decodeURI(t : Text) : ?Text = decodeURIComponent(t);

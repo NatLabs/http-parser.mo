@@ -3,7 +3,6 @@ import Nat16 "mo:base/Nat16";
 import Option "mo:base/Option";
 import Text "mo:base/Text";
 
-import F "mo:gt-format";
 // import HttpParser "mo:http-parser";
 import HttpParser "../src";
 
@@ -45,35 +44,35 @@ actor {
     };
 
     func debugRequestParser(req : HttpParser.ParsedHttpRequest) : () {
-        Debug.print(F.format("Method ({})", [#text(req.method)]));
+        Debug.print("Method (" # debug_show (req.method) # ")");
         Debug.print("\n");
 
         let { host; port; protocol; path; queryObj; anchor; original = url } = req.url;
 
-        Debug.print(F.format("URl ({})", [#text(url)]));
+        Debug.print("URl (" # debug_show (url) # ")");
 
-        Debug.print(F.format("Protocol ({})", [#text(protocol)]));
+        Debug.print("Protocol (" # debug_show (protocol) # ")");
 
-        Debug.print(F.format("Host ({})", [#text(host.original)]));
-        Debug.print(F.format("Host ({})", [#textArray(host.array)]));
+        Debug.print("Host (" # debug_show (host.original) # ")");
+        Debug.print("Host (" # debug_show (host.array) # ")");
 
-        Debug.print(F.format("Port ({})", [#num(Nat16.toNat(port))]));
+        Debug.print("Port (" # debug_show (Nat16.toNat(port)) # ")");
 
-        Debug.print(F.format("Path ({})", [#text(path.original)]));
-        Debug.print(F.format("Path ({})", [#textArray(path.array)]));
+        Debug.print("Path (" # debug_show (path.original) # ")");
+        Debug.print("Path (" # debug_show (path.array) # ")");
 
         for ((key, value) in queryObj.trieMap.entries()) {
-            Debug.print(F.format("Query ({}: {})", [#text(key), #text(value)]));
+            Debug.print("Query (" # debug_show (key) # ": " # debug_show (value) # ")");
         };
 
-        Debug.print(F.format("Anchor ({})", [#text(anchor)]));
+        Debug.print("Anchor (" # debug_show (anchor) # ")");
 
         Debug.print("\n");
         Debug.print("Headers");
         let { keys = headerKeys; get = getHeader } = req.headers;
         for (headerKey in headerKeys.vals()) {
             let values = Option.get(getHeader(headerKey), []);
-            Debug.print(F.format("Header ({}: {})", [#text(headerKey), #textArray(values)]));
+            Debug.print("Header (" # debug_show (headerKey) # ": " # debug_show (values) # ")");
         };
 
         Debug.print("\n");
@@ -87,10 +86,7 @@ actor {
                 for (name in keys.vals()) {
                     let values = Option.get(getField(name), []);
                     Debug.print(
-                        F.format(
-                            "Field ({}: {})",
-                            [#text(name), #textArray(values)],
-                        )
+                        "Field (" # debug_show (name) # ": " # debug_show (values) # ")"
                     );
                 };
 
@@ -100,10 +96,7 @@ actor {
                             for (file in files.vals()) {
 
                                 Debug.print(
-                                    F.format(
-                                        "File ({}: filename: \"{}\", mime: \"{}/{}\", {} bytes from [start: {}, end: {}])",
-                                        [#text(name), #text(file.filename), #text(file.mimeType), #text(file.mimeSubType), #num(file.bytes.size()), #num(file.start), #num(file.end)],
-                                    )
+                                    "File (" # debug_show (name) # ": filename: \"" # debug_show (file.filename) # "\", mime: \"" # debug_show (file.mimeType) # "/" # debug_show (file.mimeSubType) # "\", " # debug_show (file.bytes.size()) # " bytes from [start: " # debug_show (file.start) # ", end: " # debug_show (file.end) # "])"
                                 );
                             };
                         };

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "moc": "0.13.2",
+  "replica": "dfx",
+  "replicaVersion": "0.28.0-beta.1",
+  "gc": "incremental",
+  "forceGc": true,
+  "results": [
+    [
+      "HttpParser:parseForm()",
+      {
+        "rts_stable_memory_size": 0,
+        "stable_memory_size": 0,
+        "instructions": 11700454774,
+        "rts_memory_size": 0,
+        "rts_total_allocation": 115559332,
+        "rts_collector_instructions": 1720419,
+        "rts_mutator_instructions": -23733,
+        "rts_logical_stable_memory_size": 0,
+        "rts_heap_size": 13704512,
+        "rts_reclaimed": 101854820
+      }
+    ]
+  ]
+}
