@@ -273,9 +273,114 @@ suite(
                             case (null) assert false;
                         };
 
+<<<<<<< HEAD
                         assert bytes(9, 23).toArray() == ArrayModule.slice(jsonBytes, 9, 23);
                     },
                 );
+=======
+                                queryObj.get("name") == ?"Dwayne Wade",
+                                queryObj.get("language") == ?"French&English",
+                            ]);
+                        },
+                    ),
+
+                    it(
+                        "Decodes '+' as a space in URL Encoded pairs",
+                        do {
+                            // This query string uses '+' for spaces, a common encoding method.
+                            let queryObj = SearchParams("scope=openid+profile+prometheus:charge&response_type=code");
+
+                            assertAllTrue([
+                                queryObj.keys == ["scope", "response_type"],
+
+                                // The core assertion: check that '+' was converted to a space.
+                                queryObj.get("scope") == ?"openid profile prometheus:charge",
+
+                                // Also check that the other parameter is still correct.
+                                queryObj.get("response_type") == ?"code",
+                            ]);
+                        },
+                    ),
+
+                    it(
+                        "Correctly decodes a single layer of percent-encoding (handles 'double encoding')",
+                        do {
+                            // This query string contains a value that has been URL-encoded twice.
+                            // The value 'a b' was first encoded to 'a%20b'.
+                            // That result was then encoded again, turning the '%' into '%25',
+                            // resulting in 'a%2520b'.
+                            // A compliant parser should only decode one layer, resulting in 'a%20b'.
+                            let queryObj = SearchParams("value=a%2520b&other=normal");
+
+                            assertAllTrue([
+                                // Check that both keys were parsed correctly.
+                                queryObj.keys == ["value", "other"],
+
+                                // The core assertion: check that 'a%2520b' was decoded ONCE to 'a%20b'.
+                                queryObj.get("value") == ?"a%20b",
+
+                                // Also verify the other parameter is unaffected.
+                                queryObj.get("other") == ?"normal",
+                            ]);
+                        },
+                    ),
+
+                    it(
+                        "Correctly decodes a valid sequence at the very end of the string",
+                        do {
+                            // This test directly addresses the concern raised in Comment 1 regarding the
+                            // boundary check `i + 2 < sourceBytes.size()`.
+                            //
+                            // The comment suggested the condition was incorrect and might miss a valid
+                            // sequence at the end of the input. This test proves the original logic is
+                            // sound by placing a valid percent-encoded sequence (`%2F`) at the exact
+                            // end of the string.
+                            //
+                            // A successful pass confirms the loop condition correctly handles this edge case.
+                            let input = "path=a/b%2F";
+                            let expected = ?"a/b/";
+
+                            assertAllTrue([
+                                // The core assertion: check that the input is decoded correctly.
+                                SearchParams(input).get("path") == expected,
+                            ]);
+                        },
+                    ),
+
+                    it(
+                        "Treats malformed or incomplete percent-encodings as literal text",
+                        do {
+                            // This test addresses the concerns from both Comment 2 and Comment 3.
+                            //
+                            // It verifies that the function's pre-validation logic—the boundary check
+                            // (`i + 2 < size`) and the `isHexDigit` check—is working correctly.
+                            // When an invalid sequence is found, the function should treat the '%' and
+                            // subsequent characters as literals rather than attempting to decode them.
+                            //
+                            // - For "invalid%2G", the `isHexDigit('G')` check fails.
+                            // - For "incomplete%F", the `i + 2 < size` check fails.
+                            // - For "trailing%", the `i + 2 < size` check fails.
+                            //
+                            // By correctly handling these cases *before* calling `Hex.decode`, this test
+                            // proves that the `#err` case in the `switch` statement is indeed unreachable,
+                            // validating the '/* Unreachable */' comment (addressing Comment 3).
+                            // It also shows the fall-through logic correctly results in treating the '%'
+                            // as a literal, which is the desired behavior for malformed input (related to Comment 2).
+                            assertAllTrue([
+                                // Case 1: Invalid hex character
+                                Utils.decodeURIComponent("invalid%2G") == ?"invalid%2G",
+
+                                // Case 2: Incomplete sequence (one character)
+                                Utils.decodeURIComponent("incomplete%F") == ?"incomplete%F",
+
+                                // Case 3: Trailing '%' with no following characters
+                                Utils.decodeURIComponent("trailing%") == ?"trailing%",
+                            ]);
+                        },
+                    ),
+                ],
+            ),
+>>>>>>> main
 
                 test(
                     "Parse URL Encoded Form Data",
@@ -347,6 +452,7 @@ suite(
 
                         assert form.fileKeys == ["example.txt"];
 
+<<<<<<< HEAD
                         switch (form.files("example.txt")) {
                             case (?arr) {
                                 let file = arr[0];
@@ -367,3 +473,126 @@ suite(
         );
     },
 );
+=======
+                    it(
+                        "Parse URL Encoded Form Data",
+                        do {
+                            let payload = [
+                                "search=World%20Cup%20Series",
+                                "name=Doug Brock",
+                                "country=Australia",
+                                "search=Permutation%20%26%20Combination",
+                            ];
+
+                            let urlEncodedData = Text.join("&", Iter.fromArray<Text>(payload));
+                            let blob = Text.encodeUtf8(urlEncodedData);
+                            let bytes = Blob.toArray(blob);
+                            let body = Body(blob, ?"application/x-www-form-urlencoded");
+
+                            let { form } = body;
+
+                            Debug.print(debug_show ("original", body.original));
+                            Debug.print(debug_show ("size", body.size, blob.size()));
+                            Debug.print(debug_show ("text", body.text()));
+                            Debug.print(debug_show ("form.keys", form.keys));
+                            Debug.print(debug_show ("form.get(\"country\")", form.get("country")));
+                            Debug.print(debug_show ("form.get(\"name\")", form.get("name")));
+                            Debug.print(debug_show ("form.get(\"search\")", form.get("search")));
+                            Debug.print(debug_show ("form.fileKeys", form.fileKeys));
+                            Debug.print(
+                                debug_show (
+                                    "body.file()",
+                                    switch (body.file()) {
+                                        case (?buffer) ?buffer.size();
+                                        case (null) null;
+                                    },
+                                )
+                            );
+
+                            assertAllTrue([
+                                body.original == blob,
+                                body.size == blob.size(),
+                                body.text() == urlEncodedData,
+
+                                form.keys == ["search", "country", "name"],
+                                form.get("country") == ?["Australia"],
+                                form.get("name") == ?["Doug Brock"],
+                                form.get("search") == ?["World Cup Series", "Permutation & Combination"],
+
+                                form.fileKeys == [],
+
+                                switch (body.file()) {
+                                    case (?buffer) false;
+                                    case (null) true;
+                                },
+
+                                body.bytes(9, 23).toArray() == ArrayModule.slice(bytes, 9, 23),
+                            ]);
+                        },
+                    ),
+
+                    it(
+                        "Parse Multipart Form Data",
+                        do {
+                            let boundary = "boundary";
+                            let payload = [
+                                "--" # boundary,
+                                "Content-Disposition: form-data; name=\"field1\"",
+                                "",
+                                "value1",
+                                "--" # boundary,
+                                "Content-Disposition: form-data; name=\"field2\"; filename=\"example.txt\"",
+                                "Content-Type: text/plain",
+                                "",
+                                "value2",
+                                "--" # boundary # "--",
+                            ];
+
+                            let formData = Text.join("\n", Iter.fromArray<Text>(payload)) # "\n";
+                            let blob = Text.encodeUtf8(formData);
+                            let blobArray = Blob.toArray(blob);
+
+                            let body = HttpParser.Body(blob, ?"multipart/form-data");
+                            let { form } = body;
+
+                            assertAllTrue([
+                                body.original == blob,
+                                body.size == blob.size(),
+                                body.text() == formData,
+
+                                form.keys == ["field1"],
+                                form.get("field1") == ?["value1"],
+
+                                form.fileKeys == ["example.txt"],
+
+                                switch (form.files("example.txt")) {
+                                    case (?arr) {
+                                        let file = arr[0];
+
+                                        assertAllTrue([
+                                            file.name == "field2",
+                                            file.filename == "example.txt",
+                                            file.mimeType == "text",
+                                            file.mimeSubType == "plain",
+                                            file.start == 172,
+                                            file.end == 178,
+                                            file.bytes.toArray() == Utils.textToBytes("value2"),
+                                            file.bytes.toArray() == ArrayModule.slice(blobArray, 172, 178),
+                                        ]);
+                                    };
+                                    case (_) false;
+                                },
+                            ])
+
+                        },
+                    ),
+                ],
+            ),
+        ],
+    ),
+]);
+
+if (success == false) {
+    Debug.trap("Tests failed");
+};
+>>>>>>> main
