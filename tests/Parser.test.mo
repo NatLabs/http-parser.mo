@@ -1,28 +1,20 @@
 import Blob "mo:base/Blob";
-import Buffer "mo:base/Buffer";
-import Debug "mo:base/Debug";
-import HashMap "mo:base/HashMap";
 import Iter "mo:base/Iter";
 import Option "mo:base/Option";
 import Text "mo:base/Text";
-import Array "mo:base/Array";
-import Nat16 "mo:base/Nat16";
 
 import ArrayModule "mo:array/Array";
-import JSON "mo:json/JSON";
-import ActorSpec "./utils/ActorSpec";
+import JSON "mo:gt-json/JSON";
+import { suite; test } "mo:test";
 
 import HttpParser "../src/lib";
 import Types "../src/Types";
 import Utils "../src/Utils";
 
-let { assertTrue; assertFalse; assertAllTrue; describe; it; skip; pending; run } = ActorSpec;
-
 let { URL; SearchParams; Headers; Body } = HttpParser;
 
 func isFormEmpty(form : Types.FormObjType) : Bool {
     let { keys; trieMap; fileKeys } = form;
-
     keys == [] and fileKeys == [] and trieMap.size() == 0;
 };
 
@@ -39,389 +31,339 @@ func zipIter<A, B>(a : Iter.Iter<A>, b : Iter.Iter<B>) : Iter.Iter<(A, B)> {
     };
 };
 
-func assertNull<T>(item : ?T) : Bool {
-    switch (item) {
-        case (null) true;
-        case (_) false;
-    };
-};
-
 func isJsonStrictEqual(v1 : JSON.JSON, v2 : JSON.JSON) : Bool {
     switch (v1, v2) {
         case (#Number(n1), #Number(n2)) n1 == n2;
         case (#String(s1), #String(s2)) s1 == s2;
         case (#Array(arr1), #Array(arr2)) {
-            if (arr1.size() != arr2.size()) {
-                return false;
-            };
-
+            if (arr1.size() != arr2.size()) return false;
             for ((val1, val2) in zipIter(arr1.vals(), arr2.vals())) {
-                if (not isJsonStrictEqual(val1, val2)) {
-                    return false;
-                };
+                if (not isJsonStrictEqual(val1, val2)) return false;
             };
             return true;
         };
-
         case (#Boolean(bool1), #Boolean(bool2)) bool1 == bool2;
         case (#Object(obj1), #Object(obj2)) {
-
-            if (obj1.size() != obj2.size()) {
-                return false;
-            };
-
+            if (obj1.size() != obj2.size()) return false;
             for ((key1, val1) in obj1.vals()) {
                 for ((key2, val2) in obj2.vals()) {
-                    if (key1 == key2) if (not isJsonStrictEqual(val1, val2)) {
-                        return false;
-                    };
+                    if (key1 == key2) if (not isJsonStrictEqual(val1, val2)) return false;
                 };
             };
-
             return true;
         };
-
         case (#Null, #Null) true;
         case (_, _) false;
     };
 };
 
-let success = run([
-    describe(
-        "HttpParser Tests",
-        [
-            describe(
-                "URL Tests",
-                [
-                    it(
-                        "Test 1: Successfully parse all fields",
-                        do {
-                            let { url; method } = HttpParser.parse({
-                                url = "/counter/?tag=2526172523#myAnchor";
-                                headers = [("host", "m7sm4-2iaaa-aaaab-qabra-cai.raw.ic0.app")];
-                                method = "GET";
-                                body = Blob.fromArray([]);
-                            });
+suite(
+    "HttpParser Tests",
+    func() {
+        suite(
+            "URL Tests",
+            func() {
+                test(
+                    "Successfully parse all fields",
+                    func() {
+                        let { url; method } = HttpParser.parse({
+                            url = "/counter/?tag=2526172523#myAnchor";
+                            headers = [("host", "m7sm4-2iaaa-aaaab-qabra-cai.raw.ic0.app")];
+                            method = "GET";
+                            body = Blob.fromArray([]);
+                        });
 
-                            let { host; port; protocol; path; queryObj; anchor } = url;
-                            assertAllTrue([
-                                method == "GET",
-                                protocol == "https",
-                                port == 443,
-                                host.original == "m7sm4-2iaaa-aaaab-qabra-cai.raw.ic0.app",
-                                host.array == ["m7sm4-2iaaa-aaaab-qabra-cai", "raw", "ic0", "app"],
+                        let { host; port; protocol; path; queryObj; anchor } = url;
+                        assert method == "GET";
+                        assert protocol == "https";
+                        assert port == 443;
+                        assert host.original == "m7sm4-2iaaa-aaaab-qabra-cai.raw.ic0.app";
+                        assert host.array == ["m7sm4-2iaaa-aaaab-qabra-cai", "raw", "ic0", "app"];
+                        assert path.original == "/counter/";
+                        // Normalize the array by removing empty trailing segments
+                        assert path.array == ["counter"];
+                        assert queryObj.original == "tag=2526172523";
+                        assert queryObj.keys == ["tag"];
+                        assert queryObj.get("tag") == ?"2526172523";
+                        assert Iter.toArray(queryObj.trieMap.entries()) == [("tag", "2526172523")];
+                        assert anchor == "myAnchor";
+                    },
+                );
 
-                                path.original == "/counter/",
-                                path.array == ["counter", ""],
+                test(
+                    "Successfully parse local URLs",
+                    func() {
+                        let headers = Headers([("host", "localhost:8000")]);
+                        let url = HttpParser.URL("/tokens/345", headers);
 
-                                queryObj.original == "tag=2526172523",
-                                queryObj.keys == ["tag"],
-                                queryObj.get("tag") == ?"2526172523",
-                                Iter.toArray(queryObj.trieMap.entries()) == [("tag", "2526172523")],
+                        let { host; port; protocol; path; queryObj; anchor } = url;
+                        assert protocol == "https";
+                        assert port == 8000;
+                        assert host.original == "localhost";
+                        assert host.array == ["localhost"];
+                        assert path.original == "/tokens/345";
+                        assert path.array == ["tokens", "345"];
+                        assert queryObj.keys == [];
+                        assert Iter.toArray(queryObj.trieMap.entries()) == [];
+                        assert anchor == "";
+                    },
+                );
 
-                                anchor == "myAnchor",
-                            ]);
+                test(
+                    "Path normalization tests",
+                    func() {
+                        let headers = Headers([]);
 
-                        },
-                    ),
+                        // Test consecutive slashes normalization
+                        let consecutiveSlashes = HttpParser.URL("http://example.com//path///to////resource", headers);
+                        assert consecutiveSlashes.path.original == "/path/to/resource";
+                        assert consecutiveSlashes.path.array == ["path", "to", "resource"];
 
-                    it(
-                        "Test 2: Successfully parse all fields",
-                        do {
-                            let headers = HttpParser.Headers([("host", "localhost:8000")]);
-                            let url = HttpParser.URL("/tokens/345", headers);
+                        // Test trailing slash preservation in original path but normalization in array
+                        let trailingSlash = HttpParser.URL("http://example.com/path/", headers);
+                        assert trailingSlash.path.original == "/path/";
+                        assert trailingSlash.path.array == ["path"];
 
-                            let { host; port; protocol; path; queryObj; anchor } = url;
+                        // Test multiple trailing slashes normalization
+                        let multipleTrailingSlashes = HttpParser.URL("http://example.com/path///", headers);
+                        assert multipleTrailingSlashes.path.original == "/path/";
+                        assert multipleTrailingSlashes.path.array == ["path"];
 
-                            assertAllTrue([
-                                protocol == "https",
-                                port == 8000,
-                                host.original == "localhost",
-                                host.array == ["localhost"],
+                        // Test root path
+                        let rootPath = HttpParser.URL("http://example.com/", headers);
+                        assert rootPath.path.original == "/";
+                        assert rootPath.path.array == [];
+                    },
+                );
+            },
+        );
 
-                                path.original == "/tokens/345",
-                                path.array == ["tokens", "345"],
+        suite(
+            "SearchParams Tests",
+            func() {
+                test(
+                    "Parse Query String",
+                    func() {
+                        let queryObj = SearchParams("?trait-count=11&level=21&species=pisces");
+                        assert queryObj.original == "trait-count=11&level=21&species=pisces";
+                        assert queryObj.keys == ["trait-count", "level", "species"];
+                        assert queryObj.get("trait-count") == ?"11";
+                        assert queryObj.get("level") == ?"21";
+                        assert queryObj.get("species") == ?"pisces";
+                    },
+                );
 
-                                queryObj.keys == [],
-                                Iter.toArray(queryObj.trieMap.entries()) == [],
+                test(
+                    "Returns the last field if it has duplicates",
+                    func() {
+                        let queryObj = SearchParams("name=Brian&name=Wade&job=Pilot&JOB=Film Director");
+                        assert queryObj.keys == ["name", "job", "JOB"];
+                        assert queryObj.get("name") == ?"Wade";
+                        assert queryObj.get("job") == ?"Pilot";
+                        assert queryObj.get("JOB") == ?"Film Director";
+                    },
+                );
 
-                                anchor == "",
-                            ]);
+                test(
+                    "Decodes URL Encoded pairs",
+                    func() {
+                        let queryObj = SearchParams("name=Dwayne%20Wade&language=French%26English");
+                        assert queryObj.keys == ["name", "language"];
+                        assert queryObj.get("name") == ?"Dwayne Wade";
+                        assert queryObj.get("language") == ?"French&English";
+                    },
+                );
+            },
+        );
 
-                        },
-                    ),
-                ],
-            ),
+        suite(
+            "Headers Tests",
+            func() {
+                test(
+                    "Case Insensitive",
+                    func() {
+                        let headers = Headers([
+                            ("Accept", "application/json"),
+                            ("Origin", "http://mydomain.com"),
+                            ("Cookie", "name=value"),
+                        ]);
+                        assert headers.keys == ["accept", "origin", "cookie"];
+                        assert headers.get("accept") == ?["application/json"];
+                        assert headers.get("Origin") == ?["http://mydomain.com"];
+                        assert headers.get("COOKIE") == ?["name=value"];
+                    },
+                );
 
-            describe(
-                "SearchParams Tests",
-                [
-                    it(
-                        "Parse Query String",
-                        do {
-                            let queryObj = SearchParams("?trait-count=11&level=21&species=pisces");
+                test(
+                    "Splits comma separated values",
+                    func() {
+                        let headers = Headers([
+                            ("Accept", "application/json"),
+                            ("Accept-Encoding", "gzip, deflate"),
+                            ("Custom-Header", "value1, value2"),
+                        ]);
+                        assert headers.keys == ["accept", "accept-encoding", "custom-header"];
+                        assert headers.get("accept") == ?["application/json"];
+                        assert headers.get("accept-encoding") == ?["gzip", "deflate"];
+                        assert headers.get("custom-header") == ?["value1", "value2"];
+                    },
+                );
 
-                            assertAllTrue([
-                                queryObj.original == "trait-count=11&level=21&species=pisces",
-                                queryObj.keys == ["trait-count", "level", "species"],
+                test(
+                    "Consolidates duplicated fields",
+                    func() {
+                        let headers = Headers([
+                            ("Accept", "application/json"),
+                            ("Accept", "text/plain"),
+                            ("Custom-Header", "value1, value2"),
+                            ("Custom-Header", "value3"),
+                        ]);
+                        assert headers.keys == ["accept", "custom-header"];
+                        assert headers.get("accept") == ?["application/json", "text/plain"];
+                        assert headers.get("custom-header") == ?["value1", "value2", "value3"];
+                    },
+                );
+            },
+        );
 
-                                queryObj.get("trait-count") == ?"11",
-                                queryObj.get("level") == ?"21",
-                                queryObj.get("species") == ?"pisces",
-                            ]);
-                        },
-                    ),
+        suite(
+            "Body Tests",
+            func() {
+                test(
+                    "Parse JSON Request Body",
+                    func() {
+                        let payload = [
+                            "{",
+                            "\"window\": {",
+                            "\"title\": \"Internet Computer Game\",",
+                            "\"name\": \"Dfinity Wars\",",
+                            "\"width\": 500,",
+                            "\"height\": 500",
+                            "}",
+                            "}",
+                        ];
 
-                    it(
-                        "Returns the first field if it has duplicates",
-                        do {
-                            let queryObj = SearchParams("name=Brian&name=Wade&job=Pilot&JOB=Film Director");
+                        let json = Text.join("", Iter.fromArray<Text>(payload));
+                        let jsonBlob = Text.encodeUtf8(json);
+                        let jsonBytes = Blob.toArray(jsonBlob);
+                        let body = Body(jsonBlob, null);
 
-                            assertAllTrue([
-                                queryObj.keys == ["name", "job", "JOB"],
+                        let { size; form; bytes } = body;
 
-                                queryObj.get("name") == ?"Brian",
-                                queryObj.get("job") == ?"Pilot",
-                                queryObj.get("JOB") == ?"Film Director",
-                            ]);
-                        },
-                    ),
+                        assert body.original == jsonBlob;
+                        assert size == jsonBlob.size();
+                        assert body.text() == json;
+                        assert isFormEmpty(form);
 
-                    it(
-                        "Decodes URL Encoded pairs",
-                        do {
-                            let queryObj = SearchParams("name=Dwayne%20Wade&language=French%26English");
+                        assert isJsonStrictEqual(
+                            Option.get(body.deserialize(), #Null),
+                            #Object([(
+                                "window",
+                                #Object([
+                                    ("title", #String("Internet Computer Game")),
+                                    ("name", #String("Dfinity Wars")),
+                                    ("width", #Number(500)),
+                                    ("height", #Number(500)),
+                                ]),
+                            )]),
+                        );
 
-                            assertAllTrue([
-                                queryObj.keys == ["name", "language"],
+                        switch (body.file()) {
+                            case (?buffer) assert buffer.toArray() == jsonBytes;
+                            case (null) assert false;
+                        };
 
-                                queryObj.get("name") == ?"Dwayne Wade",
-                                queryObj.get("language") == ?"French&English",
-                            ]);
-                        },
-                    ),
-                ],
-            ),
+                        assert bytes(9, 23).toArray() == ArrayModule.slice(jsonBytes, 9, 23);
+                    },
+                );
 
-            describe(
-                "Headers Tests",
-                [
-                    it(
-                        "Case Insensitive",
-                        do {
-                            let headers = Headers([("Accept", "application/json"), ("Origin", "http://mydomain.com"), ("Cookie", "name=value")]);
+                test(
+                    "Parse URL Encoded Form Data",
+                    func() {
+                        let payload = [
+                            "search=World%20Cup%20Series",
+                            "name=Doug Brock",
+                            "country=Australia",
+                            "search=Permutation%20%26%20Combination",
+                        ];
 
-                            assertAllTrue([
-                                headers.keys == ["accept", "origin", "cookie"],
+                        let urlEncodedData = Text.join("&", Iter.fromArray<Text>(payload));
+                        let blob = Text.encodeUtf8(urlEncodedData);
+                        let bytes = Blob.toArray(blob);
+                        let body = Body(blob, ?"application/x-www-form-urlencoded");
 
-                                headers.get("accept") == ?["application/json"],
-                                headers.get("Origin") == ?["http://mydomain.com"],
-                                headers.get("COOKIE") == ?["name=value"],
-                            ]);
-                        },
-                    ),
+                        let { form } = body;
 
-                    it(
-                        "Splits comma seperated values into an array",
-                        do {
-                            let headers = Headers([("Accept", "application/json"), ("Accept-Encoding", "gzip, deflate"), ("Custom-Header", "value1, value2")]);
+                        assert body.original == blob;
+                        assert body.size == blob.size();
+                        assert body.text() == urlEncodedData;
 
-                            assertAllTrue([
-                                headers.keys == ["accept", "accept-encoding", "custom-header"],
+                        assert form.keys == ["search", "country", "name"];
+                        assert form.get("country") == ?["Australia"];
+                        assert form.get("name") == ?["Doug Brock"];
+                        assert form.get("search") == ?["World Cup Series", "Permutation & Combination"];
 
-                                headers.get("accept") == ?["application/json"],
-                                headers.get("accept-encoding") == ?["gzip", "deflate"],
-                                headers.get("custom-header") == ?["value1", "value2"],
-                            ]);
-                        },
-                    ),
+                        assert form.fileKeys == [];
 
-                    it(
-                        "Consolidates values of duplicated fields",
-                        do {
-                            let headers = Headers([("Accept", "application/json"), ("Accept", "text/plain"), ("Custom-Header", "value1, value2"), ("Custom-Header", "value3")]);
+                        switch (body.file()) {
+                            case (?buffer) assert false;
+                            case (null) assert true;
+                        };
 
-                            assertAllTrue([
-                                headers.keys == ["accept", "custom-header"],
-                                headers.get("accept") == ?["application/json", "text/plain"],
-                                headers.get("custom-header") == ?["value1", "value2", "value3"],
-                            ]);
-                        },
-                    ),
-                ],
-            ),
+                        assert body.bytes(9, 23).toArray() == ArrayModule.slice(bytes, 9, 23);
+                    },
+                );
 
-            describe(
-                "Body Tests",
-                [
-                    it(
-                        "Parse JSON Request Body",
-                        do {
-                            let payload = [
-                                "{",
-                                "\"window\": {",
-                                "\"title\": \"Internet Computer Game\",",
-                                "\"name\": \"Dfinity Wars\",",
-                                "\"width\": 500,",
-                                "\"height\": 500",
-                                "}",
-                                "}",
-                            ];
+                test(
+                    "Parse Multipart Form Data",
+                    func() {
+                        let boundary = "boundary";
+                        let payload = [
+                            "--" # boundary,
+                            "Content-Disposition: form-data; name=\"field1\"",
+                            "",
+                            "value1",
+                            "--" # boundary,
+                            "Content-Disposition: form-data; name=\"field2\"; filename=\"example.txt\"",
+                            "Content-Type: text/plain",
+                            "",
+                            "value2",
+                            "--" # boundary # "--",
+                        ];
 
-                            let json = Text.join("", Iter.fromArray<Text>(payload));
+                        let formData = Text.join("\n", Iter.fromArray<Text>(payload)) # "\n";
+                        let blob = Text.encodeUtf8(formData);
+                        let blobArray = Blob.toArray(blob);
 
-                            let jsonBlob = Text.encodeUtf8(json);
-                            let jsonBytes = Blob.toArray(jsonBlob);
-                            let body = Body(jsonBlob, null);
+                        let body = HttpParser.Body(blob, ?"multipart/form-data");
+                        let { form } = body;
 
-                            let { size; text; form; bytes; file } = body;
+                        assert body.original == blob;
+                        assert body.size == blob.size();
+                        assert body.text() == formData;
 
-                            let jsonResult = isJsonStrictEqual(
-                                Option.get(body.deserialize(), #Null),
-                                #Object([(
-                                    "window",
-                                    #Object([
-                                        ("title", #String("Internet Computer Game")),
-                                        ("name", #String("Dfinity Wars")),
-                                        ("width", #Number(500)),
-                                        ("height", #Number(500)),
-                                    ]),
-                                )]),
-                            );
+                        assert form.keys == ["field1"];
+                        assert form.get("field1") == ?["value1"];
 
-                            assertAllTrue([
-                                body.original == jsonBlob,
-                                size == jsonBlob.size(),
-                                body.text() == json,
-                                isFormEmpty(form),
-                                jsonResult,
-                                switch (body.file()) {
-                                    case (?buffer) buffer.toArray() == jsonBytes;
-                                    case (null) false;
-                                },
-                                bytes(9, 23).toArray() == ArrayModule.slice(jsonBytes, 9, 23),
-                            ]);
-                        },
-                    ),
+                        assert form.fileKeys == ["example.txt"];
 
-                    it(
-                        "Parse URL Encoded Form Data",
-                        do {
-                            let payload = [
-                                "search=World%20Cup%20Series",
-                                "name=Doug Brock",
-                                "country=Australia",
-                                "search=Permutation%20%26%20Combination",
-                            ];
-
-                            let urlEncodedData = Text.join("&", Iter.fromArray<Text>(payload));
-                            let blob = Text.encodeUtf8(urlEncodedData);
-                            let bytes = Blob.toArray(blob);
-                            let body = Body(blob, ?"application/x-www-form-urlencoded");
-
-                            let { form } = body;
-
-                            Debug.print(debug_show ("original", body.original));
-                            Debug.print(debug_show ("size", body.size, blob.size()));
-                            Debug.print(debug_show ("text", body.text()));
-                            Debug.print(debug_show ("form.keys", form.keys));
-                            Debug.print(debug_show ("form.get(\"country\")", form.get("country")));
-                            Debug.print(debug_show ("form.get(\"name\")", form.get("name")));
-                            Debug.print(debug_show ("form.get(\"search\")", form.get("search")));
-                            Debug.print(debug_show ("form.fileKeys", form.fileKeys));
-                            Debug.print(
-                                debug_show (
-                                    "body.file()",
-                                    switch (body.file()) {
-                                        case (?buffer) ?buffer.size();
-                                        case (null) null;
-                                    },
-                                )
-                            );
-
-                            assertAllTrue([
-                                body.original == blob,
-                                body.size == blob.size(),
-                                body.text() == urlEncodedData,
-
-                                form.keys == ["search", "country", "name"],
-                                form.get("country") == ?["Australia"],
-                                form.get("name") == ?["Doug Brock"],
-                                form.get("search") == ?["World Cup Series", "Permutation & Combination"],
-
-                                form.fileKeys == [],
-
-                                switch (body.file()) {
-                                    case (?buffer) false;
-                                    case (null) true;
-                                },
-
-                                body.bytes(9, 23).toArray() == ArrayModule.slice(bytes, 9, 23)
-                            ]);
-                        },
-                    ),
-
-                    it(
-                        "Parse Multipart Form Data",
-                        do {
-                            let boundary = "boundary";
-                            let payload = [
-                                "--" # boundary,
-                                "Content-Disposition: form-data; name=\"field1\"",
-                                "",
-                                "value1",
-                                "--" # boundary,
-                                "Content-Disposition: form-data; name=\"field2\"; filename=\"example.txt\"",
-                                "Content-Type: text/plain",
-                                "",
-                                "value2",
-                                "--" # boundary # "--",
-                            ];
-
-                            let formData = Text.join("\n", Iter.fromArray<Text>(payload)) # "\n";
-                            let blob = Text.encodeUtf8(formData);
-                            let blobArray = Blob.toArray(blob);
-
-                            let body = HttpParser.Body(blob, ?"multipart/form-data");
-                            let { form } = body;
-
-                            assertAllTrue([
-                                body.original == blob,
-                                body.size == blob.size(),
-                                body.text() == formData,
-
-                                form.keys == ["field1"],
-                                form.get("field1") == ?["value1"],
-
-                                form.fileKeys == ["example.txt"],
-
-                                switch (form.files("example.txt")) {
-                                    case (?arr) {
-                                        let file = arr[0];
-
-                                        assertAllTrue([
-                                            file.name == "field2",
-                                            file.filename == "example.txt",
-                                            file.mimeType == "text",
-                                            file.mimeSubType == "plain",
-                                            file.start == 172,
-                                            file.end == 178,
-                                            file.bytes.toArray() == Utils.textToBytes("value2"),
-                                            file.bytes.toArray() == ArrayModule.slice(blobArray, 172, 178)
-                                        ]);
-                                    };
-                                    case (_) false;
-                                },
-                            ])
-
-                        },
-                    ),
-                ],
-            ),
-        ],
-    ),
-]);
-
-if (success == false) {
-    Debug.trap("Tests failed");
-};
+                        switch (form.files("example.txt")) {
+                            case (?arr) {
+                                let file = arr[0];
+                                assert file.name == "field2";
+                                assert file.filename == "example.txt";
+                                assert file.mimeType == "text";
+                                assert file.mimeSubType == "plain";
+                                assert file.start == 172;
+                                assert file.end == 178;
+                                assert file.bytes.toArray() == Utils.textToBytes("value2");
+                                assert file.bytes.toArray() == ArrayModule.slice(blobArray, 172, 178);
+                            };
+                            case (_) assert false;
+                        };
+                    },
+                );
+            },
+        );
+    },
+);

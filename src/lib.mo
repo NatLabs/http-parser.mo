@@ -10,7 +10,7 @@ import Option "mo:base/Option";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
 
-import JSON "mo:json/JSON";
+import JSON "mo:gt-json/JSON";
 
 import Types "Types";
 import Utils "Utils";
@@ -95,27 +95,18 @@ module HttpRequestParser {
 
     public class URL(raw_url : Text, headers : Headers) {
 
-        let raw_domain = (Option.get(headers.get("host"), [""]))[0];
+        let raw_domain = switch (headers.get("host")) {
+            case (?host_array) if (host_array.size() > 0) host_array[0] else "";
+            case (_) "";
+        };
 
         var domain = Option.get(Utils.decodeURIComponent(raw_domain), raw_domain);
         var url = Option.get(Utils.decodeURIComponent(raw_url), raw_url);
 
-        public let original = domain # url;
-
-        public let protocol = "https";
-
-        let authority = Iter.toArray(Text.tokens(domain, #char(':')));
-        let (_host, _port) : (Text, Nat16) = switch (authority.size()) {
-            case (0) ("", defaultPort(protocol));
-            case (1) (authority[0], defaultPort(protocol));
-            case (_) (authority[0], Nat16.fromNat(Utils.textToNat(authority[1])));
-        };
-
-        public let port = _port;
-
-        public let host = object {
-            public let original = _host;
-            public let array = Iter.toArray(Text.tokens(_host, #char('.')));
+        public let original = if (Text.startsWith(url, #text("http")) or not Text.startsWith(url, #char('/'))) {
+            url;
+        } else {
+            domain # url;
         };
 
         let p = Iter.toArray(Text.tokens(url, #char('#')));
@@ -123,8 +114,10 @@ module HttpRequestParser {
         public let anchor = if (p.size() > 1) {
             url := p[0];
             p[1];
-        } else {
+        } else if (p.size() == 1) {
             url := p[0];
+            "";
+        } else {
             "";
         };
 
@@ -132,8 +125,7 @@ module HttpRequestParser {
 
         let queryString : Text = switch (re.size()) {
             case (0) {
-                url := "";
-                re[1];
+                "";
             };
             case (1) {
                 url := re[0];
@@ -149,12 +141,55 @@ module HttpRequestParser {
 
         public let queryObj : SearchParams = SearchParams(queryString);
 
-        public let path = object {
-            public let original = url;
+        public let protocol = if (Text.startsWith(url, #text("http://"))) {
+            "http";
+        } else { "https" };
 
-            let path_iter = Text.split(url, #char('/'));
-            ignore path_iter.next();
+        if (Text.startsWith(url, #text("https://")) or Text.startsWith(url, #text("http://"))) {
+            let split_text = Text.split(url, #char('/'));
+
+            ignore split_text.next(); // "https:" or "http:"
+            ignore split_text.next(); // ""
+
+            switch (split_text.next()) {
+                case (?_domain) {
+                    domain := _domain;
+                };
+                case (_) { Debug.trap("Improper URL format: " # url) };
+            };
+
+            url := "/" # Text.join("/", split_text);
+
+        };
+
+        let authority = Iter.toArray(Text.tokens(domain, #char(':')));
+        let (_host, _port) : (Text, Nat16) = switch (authority.size()) {
+            case (0) ("", defaultPort(protocol));
+            case (1) (authority[0], defaultPort(protocol));
+            case (_) (authority[0], Nat16.fromNat(Utils.textToNat(authority[1])));
+        };
+
+        public let port = _port;
+
+        public let host = object {
+            public let original = _host;
+            public let array = Iter.toArray(Text.tokens(_host, #char('.')));
+        };
+
+        public let path = object {
+            if (Text.startsWith(url, #char('/'))) {
+                switch (Text.stripStart(url, #char('/'))) {
+                    case (?_url) url := _url;
+                    case (_) {};
+                };
+            };
+
+            let path_iter = Text.tokens(url, #char('/'));
+
             public let array = Iter.toArray(path_iter);
+            public let original = "/" # Text.join("/", array.vals()) # (
+                if (Text.endsWith(url, #char('/'))) "/" else ""
+            );
         };
 
     };
@@ -256,10 +291,10 @@ module HttpRequestParser {
                         null;
                     };
 
-                    ? #multipart(boundary);
+                    ?#multipart(boundary);
                 } else {
                     if (isURLEncoded(conType)) {
-                        ? #urlencoded;
+                        ?#urlencoded;
                     } else {
                         null;
                     };
@@ -343,5 +378,21 @@ module HttpRequestParser {
         } else {
             null;
         };
+    };
+
+    public func encodeURIComponent(t : Text) : Text {
+        Utils.encodeURIComponent(t);
+    };
+
+    public func decodeURIComponent(t : Text) : ?Text {
+        Utils.decodeURIComponent(t);
+    };
+
+    public func encodeURI(t : Text) : Text {
+        Utils.encodeURI(t);
+    };
+
+    public func decodeURI(t : Text) : ?Text {
+        Utils.decodeURI(t);
     };
 };

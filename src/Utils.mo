@@ -1,6 +1,7 @@
 import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Char "mo:base/Char";
+import Debug "mo:base/Debug";
 import Buffer "mo:base/Buffer";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
@@ -11,8 +12,8 @@ import Option "mo:base/Option";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
 
-import Hex "mo:encoding/Hex";
-import JSON "mo:json/JSON";
+import Hex "mo:gt-encoding/Hex";
+import JSON "mo:gt-json/JSON";
 
 module {
     public func textToNat(txt : Text) : Nat {
@@ -20,7 +21,7 @@ module {
         let chars = txt.chars();
         var num : Nat = 0;
         for (v in chars) {
-            let charToNum = Nat32.toNat(Char.toNat32(v) -48);
+            let charToNum = Nat32.toNat(Char.toNat32(v) - 48);
             assert (charToNum >= 0 and charToNum <= 9);
             num := num * 10 + charToNum;
         };
@@ -144,19 +145,106 @@ module {
         Text.decodeUtf8(Blob.fromArray(bytes));
     };
 
-    public func encodeURIComponent(t : Text) : Text {
-        var encoded = "";
+    /// Used to encode the whole URL avoiding avoiding characters that are needed for the URL structure
+    public func encodeURI(t : Text) : Text {
+
+        func safe_chars(c : Char) : Bool {
+            let nat32_char = Char.toNat32(c);
+
+            let is_safe = if (nat32_char == 45 or nat32_char == 46) {
+                // '-' or '.'
+                true;
+            } else if (nat32_char >= 97 and nat32_char <= 122) {
+                // 'a-z'
+                true;
+            } else if (nat32_char >= 65 and nat32_char <= 90) {
+                // 'A-Z'
+                true;
+            } else if (nat32_char >= 48 and nat32_char <= 57) {
+                // '0-9'
+                true;
+            } else if (nat32_char == 95 or nat32_char == 126) {
+                // '_' or '~'
+                true;
+            } else if (
+                //  ';', ',', '/', '?', ':', '@', '&', '=', '+', '$'
+                nat32_char == 0x3B or nat32_char == 0x2C or nat32_char == 0x2F or nat32_char == 0x3F or nat32_char == 0x3A or nat32_char == 0x40 or nat32_char == 0x26 or nat32_char == 0x3D or nat32_char == 0x2B or nat32_char == 0x24,
+            ) {
+                true;
+            } else {
+                false;
+            };
+
+            is_safe;
+
+        };
+
+        var result = "";
 
         for (c in t.chars()) {
-            let cAsText = Char.toText(c);
-            if (Text.contains(cAsText, matchAny("'()*-._~")) or Char.isAlphabetic(c) or Char.isDigit(c)) {
-                encoded := encoded # Char.toText(c);
+            if (safe_chars(c)) {
+                result := result # Char.toText(c);
             } else {
-                let hex = Hex.encodeByte(charToNat8(c));
-                encoded := encoded # "%" # hex;
+                let utf8 = debug_show Text.encodeUtf8(Char.toText(c));
+                let encoded_text = Text.replace(
+                    Text.replace(utf8, #text("\\"), "%"),
+                    #text("\""),
+                    "",
+                );
+
+                result := result # encoded_text;
             };
         };
-        encoded;
+
+        result;
+
+    };
+
+    public func encodeURIComponent(t : Text) : Text {
+
+        func safe_chars(c : Char) : Bool {
+            let nat32_char = Char.toNat32(c);
+
+            let is_safe = if (97 >= nat32_char and nat32_char <= 122) {
+                // 'a-z'
+                true;
+            } else if (65 >= nat32_char and nat32_char <= 90) {
+                // 'A-Z'
+                true;
+            } else if (48 >= nat32_char and nat32_char <= 57) {
+                // '0-9'
+                true;
+            } else if (nat32_char == 95 or nat32_char == 126 or nat32_char == 45 or nat32_char == 46) {
+                // '_' or '~' or '-' or '.'
+                true;
+            } else {
+                false;
+            };
+
+            is_safe;
+
+        };
+
+        var result = "";
+
+        for (c in t.chars()) {
+            if (safe_chars(c)) {
+                result := result # Char.toText(c);
+            } else {
+
+                let utf8 = debug_show Text.encodeUtf8(Char.toText(c));
+                let encoded_text = Text.replace(
+                    Text.replace(utf8, #text("\\"), "%"),
+                    #text("\""),
+                    "",
+                );
+
+                result := result # encoded_text;
+            };
+        };
+
+        result;
+
     };
 
     public func subText(value : Text, indexStart : Nat, indexEnd : Nat) : Text {
@@ -183,26 +271,57 @@ module {
     };
 
     public func decodeURIComponent(t : Text) : ?Text {
+        let buffer : Buffer.Buffer<Nat8> = Buffer.Buffer<Nat8>(t.size() * 4);
         let iter = Text.split(t, #char '%');
-        var decodedURI = Option.get(iter.next(), "");
+        let bytes = Blob.toArray(Text.encodeUtf8(Option.get(iter.next(), "")));
+        for (byte in bytes.vals()) { buffer.add(byte) };
 
-        for (sp in iter) {
-            let hex = subText(sp, 0, 2);
+        var accumulated_hex = "";
 
-            switch (Hex.decode(hex)) {
-                case (#ok(symbols)) {
-                    let char = (nat8ToChar(symbols[0]));
-                    decodedURI := decodedURI # Char.toText(char) #
-                    Text.trimStart(sp, #text hex);
+        func extract_hex_bytes(accumulated_hex : Text, last_token : Text) : Bool {
+            switch (Hex.decode(accumulated_hex)) {
+                case (#ok(utf8_encoding)) {
+                    for (byte in utf8_encoding.vals()) { buffer.add(byte) };
+                    let non_decoded = if (last_token.size() < 2) "" else subText(last_token, 2, last_token.size());
+
+                    let bytes = Blob.toArray(Text.encodeUtf8(non_decoded));
+                    for (byte in bytes.vals()) { buffer.add(byte) };
+
+                    true; // passed
+
                 };
                 case (_) {
-                    return null;
+                    false; // failed
                 };
             };
+        };
+
+        label decoding_hex for (sp in iter) {
+            if (sp.size() == 2) {
+                accumulated_hex #= sp;
+                continue decoding_hex;
+            };
+
+            let hex = subText(sp, 0, 2);
+            accumulated_hex #= hex;
+
+            if (not extract_hex_bytes(accumulated_hex, sp)) {
+                return null;
+            };
+
+            accumulated_hex := "";
 
         };
 
-        ?decodedURI;
+        if (accumulated_hex.size() > 0) {
+            if (not extract_hex_bytes(accumulated_hex, "")) {
+                return null;
+            };
+        };
+
+        Text.decodeUtf8(Blob.fromArray(Buffer.toArray(buffer)));
     };
+
+    public func decodeURI(t : Text) : ?Text = decodeURIComponent(t);
 
 };

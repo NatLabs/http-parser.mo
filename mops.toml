@@ -1,18 +1,19 @@
 [package]
 name = "http-parser"
-version = "0.3.0"
+version = "0.4.0"
 description = "A http request parser for parsing url, search query, headers and form data."
 repository = "https://github.com/NatLabs/http-parser.mo"
 
 [dependencies]
-base = "0.11.1"
-json = "https://github.com/aviate-labs/json.mo#v0.2.1@afd30ed75095cb339c1ec187d61030bbd2e59ae6"
-encoding = "https://github.com/aviate-labs/encoding.mo#v0.4.1@2711d18727e954b11afc0d37945608512b5fbce2"
-format = "https://github.com/tomijaga/format.mo#main@e96cb389d44f923164e940b0bd35c8a459f128f1"
+base = "0.13.2"
+gt-json = "https://github.com/aviate-labs/json.mo#v0.2.1@afd30ed75095cb339c1ec187d61030bbd2e59ae6"
+gt-encoding = "https://github.com/aviate-labs/encoding.mo#v0.4.1@2711d18727e954b11afc0d37945608512b5fbce2"
 
 [dev-dependencies]
 bench = "1.0.0"
 array = "https://github.com/aviate-labs/array.mo#v0.2.1@89bb25b7f24ab31082ee3d843d720404eb1d0304"
+test = "2.0.0"
+gt-format = "https://github.com/tomijaga/format.mo#main@e96cb389d44f923164e940b0bd35c8a459f128f1"
 
 [toolchain]
 moc = "0.11.1"

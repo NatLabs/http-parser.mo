@@ -74,6 +74,8 @@ module {
         };
 
         let mime = Iter.toArray(Text.tokens(trimQuotesAndSpaces(line), #char '/'));
+        
+        if (mime.size() == 0) return ("", "");
         let mimeType = mime[0];
         let mimeSubType = if (mime.size() > 1) {
             mime[1];
