@@ -6,7 +6,7 @@ repository = "https://github.com/NatLabs/http-parser.mo"
 
 [dependencies]
 base = "0.14.13"
-hex = "1.0.1"
+hex = "1.0.3"
 'base@0.7.3' = '0.7.3'
 
 [dev-dependencies]
@@ -14,5 +14,5 @@ bench = "1.0.0"
 test = "2.1.1"
 
 [toolchain]
-moc = "0.14.13"
+moc = "1.6.0"
 wasmtime = "15.0.0"
